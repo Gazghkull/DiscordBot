@@ -2,24 +2,14 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional, Tuple, List
-from keep_alive import keep_alive
 import os
+from dotenv import load_dotenv
 import json
 import threading
 import requests
-import time
 
+load_dotenv()
 
-def self_ping():
-  while True:
-    try:
-      requests.get("https://ton-url.replit.dev/")
-    except:
-      pass
-    time.sleep(60)  # ping toutes les 60 secondes
-
-
-threading.Thread(target=self_ping, daemon=True).start()
 # ----------------- FACTIONS -----------------
 FACTIONS = ["Envahisseur", "Défenseur", "Pirate"]
 
@@ -592,14 +582,11 @@ async def on_ready():
     print(f"Erreur lors de la synchronisation des commandes : {e}")
 
 
-# ----------------- KEEP ALIVE -----------------
-keep_alive()
-
 # ----------------- RUN BOT -----------------
 token = os.getenv("DISCORD_BOT_TOKEN")
 if not token:
-  print("❌ DISCORD_BOT_TOKEN not found in environment variables!")
-  exit(1)
+    print("❌ DISCORD_BOT_TOKEN not found in environment variables!")
+    exit(1)
 
 load_data()
 bot.run(token)
