@@ -1,0 +1,12 @@
+{
+    "factions": {
+        "Envahisseur": 1,
+        "D\u00e9fenseur": 1,
+        "Pirate": 0
+    },
+    "planetes": {
+        "Cadia": 1,
+        "Armageddon": 0,
+        "Fenris": 0
+    }
+}

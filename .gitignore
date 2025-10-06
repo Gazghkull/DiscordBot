@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtualenv
+venv/
+env/
+.env
+
+# Editor
+.vscode/
+.idea/
+
+# Data / secrets
+data.json
+*.sqlite
+secrets.json
+
+# System
+.DS_Store
+
+#SSH
+sshgit
+sshgit.pub
+SSHpath.txt
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+env/
+.venv
