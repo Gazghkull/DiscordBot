@@ -174,7 +174,7 @@ async def autocomplete_honneur(interaction: discord.Interaction, current: str):
     ][:25]
 
 # ----------------- COMMANDES -----------------
-@tree.command(name="ajouter_partie",
+@tree.command(name="ajout",
               description="Ajouter une partie/bataille",
               guild=guild)
 @app_commands.describe(
@@ -192,7 +192,7 @@ async def autocomplete_honneur(interaction: discord.Interaction, current: str):
                            participant2=autocomplete_faction,
                            participant3=autocomplete_faction,
                            phase=autocomplete_phase)
-async def ajouter_partie(interaction: discord.Interaction,
+async def ajout(interaction: discord.Interaction,
                          planete: str,
                          gagnant: str,
                          choix_planete: str,
@@ -280,10 +280,10 @@ async def ajouter_partie(interaction: discord.Interaction,
 
 
 # ----------------- Clôturer phase -----------------
-@tree.command(name="cloturer_phase",
+@tree.command(name="cloture",
               description="Clôturer la phase en cours",
               guild=guild)
-async def cloturer_phase(interaction: discord.Interaction):
+async def cloture(interaction: discord.Interaction):
   global CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY
 
   # Sauvegarder stats de la phase
@@ -318,21 +318,21 @@ async def cloturer_phase(interaction: discord.Interaction):
 
 
 # ----------------- Commande phase actuelle -----------------
-@tree.command(name="phase_actuelle",
+@tree.command(name="phase",
               description="Afficher la phase en cours",
               guild=guild)
-async def phase_actuelle(interaction: discord.Interaction):
+async def phase(interaction: discord.Interaction):
   await interaction.response.send_message(
       f"📌 Phase actuelle : **{CURRENT_PHASE}**")
 
 
 # ----------------- Commande stats phase -----------------
-@tree.command(name="stats_phase",
+@tree.command(name="phase_stats",
               description="Afficher les stats d'une phase précédente",
               guild=guild)
 @app_commands.describe(phase="Numéro de la phase")
 @app_commands.autocomplete(phase=autocomplete_phase)
-async def stats_phase(interaction: discord.Interaction, phase: int):
+async def phase_stats(interaction: discord.Interaction, phase: int):
   if phase not in PHASES_HISTORY:
     await interaction.response.send_message(f"❌ Phase {phase} inconnue",
                                             ephemeral=True)
@@ -355,12 +355,12 @@ async def stats_phase(interaction: discord.Interaction, phase: int):
 
 
 # ----------------- STATS PLANETE -----------------
-@tree.command(name="stats_planete",
+@tree.command(name="planete",
               description="Afficher les stats d’une planète",
               guild=guild)
 @app_commands.describe(planete="Nom de la planète")
 @app_commands.autocomplete(planete=autocomplete_planete)
-async def stats_planete(interaction: discord.Interaction, planete: str):
+async def planete(interaction: discord.Interaction, planete: str):
   planet_info = find_planet(planete)
   if planet_info is None:
     await interaction.response.send_message(f"❌ Planète inconnue : {planete}",
@@ -382,10 +382,10 @@ async def stats_planete(interaction: discord.Interaction, planete: str):
 
 # ----------------- AUTRES COMMANDES -----------------
 @tree.command(
-    name="stats_factions",
+    name="factions",
     description="Afficher le total des parties et choix de planète par faction",
     guild=guild)
-async def stats_factions(interaction: discord.Interaction):
+async def factions(interaction: discord.Interaction):
   embed = discord.Embed(title=f"📊 Stats Factions - Phase {CURRENT_PHASE}",
                         color=discord.Color.blue())
 
@@ -407,10 +407,10 @@ async def stats_factions(interaction: discord.Interaction):
 
 
 # ----------------- SYSTEMES -----------------
-@tree.command(name="systemes",
+@tree.command(name="liste_sys",
               description="Afficher la liste des systèmes et leurs planètes",
               guild=guild)
-async def systemes(interaction: discord.Interaction):
+async def liste_sys(interaction: discord.Interaction):
   desc = ""
   for systeme, planets in SYSTEMS.items():
     desc += f"**{systeme}** : {', '.join(planets.keys())}\n"
@@ -419,13 +419,13 @@ async def systemes(interaction: discord.Interaction):
 
 # ----------------- STATS SYSTEME -----------------
 @tree.command(
-    name="stats_systeme",
+    name="systeme",
     description=
     "Afficher les stats d’un système précis avec toutes ses planètes",
     guild=guild)
 @app_commands.describe(systeme="Nom du système")
 @app_commands.autocomplete(systeme=autocomplete_systeme)
-async def stats_systeme(interaction: discord.Interaction, systeme: str):
+async def systeme(interaction: discord.Interaction, systeme: str):
   systeme = systeme.capitalize()
   if systeme not in SYSTEMS:
     await interaction.response.send_message(f"❌ Système inconnu : {systeme}",
@@ -446,11 +446,11 @@ async def stats_systeme(interaction: discord.Interaction, systeme: str):
 
 
 # ----------------- STATS TOUT -----------------
-@tree.command(name="stats_tout",
+@tree.command(name="stats",
               description=
               "Afficher les stats de toutes les planètes de tous les systèmes",
               guild=guild)
-async def stats_tout(interaction: discord.Interaction):
+async def stats(interaction: discord.Interaction):
   embed = discord.Embed(title="⚔️ Statistiques de toutes les planètes",
                         color=discord.Color.green())
 
@@ -468,7 +468,7 @@ async def stats_tout(interaction: discord.Interaction):
 
 # ----------------- MODIFIER STATS -----------------
 @tree.command(
-    name="modifier_stats",
+    name="modif",
     description=
     "Modifier directement les points ou batailles d’une faction sur une planète",
     guild=guild)
@@ -480,7 +480,7 @@ async def stats_tout(interaction: discord.Interaction):
                            faction=autocomplete_faction,
                            points=autocomplete_numbers,
                            batailles=autocomplete_numbers)
-async def modifier_stats(interaction: discord.Interaction,
+async def modif(interaction: discord.Interaction,
                          planete: str,
                          faction: str,
                          points: Optional[int] = None,
@@ -516,13 +516,13 @@ async def modifier_stats(interaction: discord.Interaction,
 
 # ----------------- AJOUTER SYSTEME -----------------
 @tree.command(
-    name="ajouter_systeme",
+    name="ajout_sys",
     description="Ajouter un nouveau système avec au moins une planète",
     guild=guild)
 @app_commands.describe(
     systeme="Nom du système à créer",
     premiere_planete="Nom de la première planète du système")
-async def ajouter_systeme(interaction: discord.Interaction, systeme: str,
+async def ajout_sys(interaction: discord.Interaction, systeme: str,
                           premiere_planete: str):
   systeme = systeme.capitalize()
   premiere_planete = premiere_planete.capitalize()
@@ -540,13 +540,13 @@ async def ajouter_systeme(interaction: discord.Interaction, systeme: str,
 
 
 # ----------------- AJOUTER PLANETE -----------------
-@tree.command(name="ajouter_planete",
+@tree.command(name="ajout_plan",
               description="Ajouter une planète à un système existant",
               guild=guild)
 @app_commands.describe(systeme="Nom du système où ajouter la planète",
                        planete="Nom de la nouvelle planète")
 @app_commands.autocomplete(systeme=autocomplete_systeme)
-async def ajouter_planete(interaction: discord.Interaction, systeme: str,
+async def ajout_plan(interaction: discord.Interaction, systeme: str,
                           planete: str):
   systeme = systeme.capitalize()
   planete = planete.capitalize()
@@ -570,7 +570,7 @@ async def ajouter_planete(interaction: discord.Interaction, systeme: str,
 
 # -------- Commande tirage au sort d'honneur  --------
 @tree.command(
-    name="rollhonneur",
+    name="honneur",
     description="Rechercher des posts contenant au moins un tag parmi les mots-clés donnés.",
     guild=guild
 )
@@ -590,7 +590,7 @@ async def ajouter_planete(interaction: discord.Interaction, systeme: str,
     mot5=autocomplete_honneur,
     mot6=autocomplete_honneur
 )
-async def rollhonneur(
+async def honneur(
     interaction: discord.Interaction,
     mot1: str,
     mot2: Optional[str] = None,
@@ -691,34 +691,82 @@ async def maj_honneurs(interaction: discord.Interaction):
         f"✅ Liste des Honneurs mise à jour avec {len(HonneurKeyWords)} tags :\n"
         f"```{', '.join(HonneurKeyWords)}```"
     )
+
 # ----------------- HELP -----------------
-@tree.command(name="help",
-              description="Afficher la liste des commandes",
+@tree.command(name="h",
+              description="Afficher la liste complète des commandes disponibles",
               guild=guild)
-async def help(interaction: discord.Interaction):
-  desc = (
-      "/ajouter_partie <Planète> <Gagnant> <ChoixPlanète> <Participants...> : Ajouter une partie\n"
-      "/stats_planete <Planète> : Stats d’une planète\n"
-      "/stats_systeme <Système> : Stats d’un système\n"
-      "/stats_tout : Stats de toutes les planètes\n"
-      "/stats_factions : Total de parties par faction\n"
-      "/modifier_stats <Système> <Planète> <Faction> points=<valeur> batailles=<valeur> : Modifier stats d’une faction\n"
-      "/systemes : Liste des systèmes et planètes\n"
-      "/ajouter_systeme : Ajoute un système\n"
-      "/ajouter_planete : Ajoute une planète à un système")
-  await interaction.response.send_message(desc)
+async def h(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📘 Commandes disponibles du Bot Galactique",
+        description="Voici la liste des commandes classées par catégorie :",
+        color=discord.Color.blurple()
+    )
+
+    # --- Phase & Batailles ---
+    embed.add_field(
+        name="⚔️ Gestion des batailles",
+        value=(
+            "• **/ajout** — Ajouter une partie ou bataille.\n"
+            "• **/cloture** — Clôturer la phase en cours et passer à la suivante.\n"
+            "• **/phase** — Afficher la phase en cours.\n"
+            "• **/phase_stats** — Voir les statistiques d’une phase précédente."
+        ),
+        inline=False
+    )
+
+    # --- Statistiques ---
+    embed.add_field(
+        name="📊 Statistiques",
+        value=(
+            "• **/planete** — Afficher les stats détaillées d’une planète.\n"
+            "• **/systeme** — Afficher les stats de toutes les planètes d’un système.\n"
+            "• **/stats** — Afficher les stats de toutes les planètes de tous les systèmes.\n"
+            "• **/factions** — Voir les totaux des batailles et choix de planète par faction."
+        ),
+        inline=False
+    )
+
+    # --- Gestion manuelle ---
+    embed.add_field(
+        name="🛠️ Gestion et modifications",
+        value=(
+            "• **/modif** — Modifier manuellement les points ou batailles d’une faction.\n"
+            "• **/ajout_sys** — Créer un nouveau système avec une planète initiale.\n"
+            "• **/ajout_plan** — Ajouter une planète dans un système existant.\n"
+            "• **/liste_sys** — Liste tous les systèmes et leurs planètes."
+        ),
+        inline=False
+    )
+
+    # --- Honneurs ---
+    embed.add_field(
+        name="🏅 Tableau d'Honneur",
+        value=(
+            "• **/honneur** — Tire au hasard un post d'honneur parmi les mots-clés donnés.\n"
+            "• **/maj_honneurs** — Met à jour la liste des mots-clés d’honneur à partir des tags des forums."
+        ),
+        inline=False
+    )
+
+    # --- Aide ---
+    embed.add_field(
+        name="ℹ️ Divers",
+        value="• **/h** — Afficher cette liste de commandes.",
+        inline=False
+    )
+
+    embed.set_footer(
+        text="Bot développé pour la campagne galactique ⚙️",
+        icon_url="https://cdn-icons-png.flaticon.com/512/4712/4712109.png"
+    )
+
+    await interaction.response.send_message(embed=embed)
 
 # ----------------- EVENT -----------------
 @bot.event
 async def on_ready():
     print(f"✅ Connecté en tant que {bot.user}")
-
-    # Charger le cog
-    try:
-        await bot.load_extension("forum_recherche")
-        print("✅ Extension forum_recherche chargée")
-    except Exception as e:
-        print(f"⚠️ Impossible de charger forum_recherche : {e}")
 
     # Synchroniser les commandes pour le serveur
     try:
