@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import json
 import threading
 import requests
+import random
 
 load_dotenv()
 
@@ -68,35 +69,43 @@ PHASES_HISTORY = {}  # Historique des phases
 DATA_FILE = "data.json"
 
 
+# ----------------- HONNEUR FORUMS IDS -----------------
+FORUM_IDS = [
+    1424007352348049598,  # ID de ton premier forum
+    1424806344417873960   # ID du deuxième forum
+]
+
 # ----------------- LOAD/SAVE DATA -----------------
 def load_data():
-  global SYSTEMS, CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY
-  try:
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-      data = json.load(f)
-      SYSTEMS = data.get("systems", SYSTEMS)
-      CURRENT_PHASE = data.get("current_phase", 1)
-      TOTAL_PARTIES = data.get("total_parties", {f: 0 for f in FACTIONS})
-      PHASES_HISTORY = data.get("phases_history", {})
-      print("✅ Données chargées depuis data.json")
-  except FileNotFoundError:
-    print("⚠️ data.json introuvable, démarrage avec les données par défaut")
-  except Exception as e:
-    print(f"❌ Erreur lors du chargement des données : {e}")
+    global SYSTEMS, CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY, HonneurKeyWords
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            SYSTEMS = data.get("systems", SYSTEMS)
+            CURRENT_PHASE = data.get("current_phase", 1)
+            TOTAL_PARTIES = data.get("total_parties", {f: 0 for f in FACTIONS})
+            PHASES_HISTORY = data.get("phases_history", {})
+            HonneurKeyWords = data.get("HonneurKeyWords", [])
+            print("✅ Données chargées depuis data.json")
+    except FileNotFoundError:
+        print("⚠️ data.json introuvable, démarrage avec les données par défaut")
+    except Exception as e:
+        print(f"❌ Erreur lors du chargement des données : {e}")
 
 
 def save_data():
-  data = {
-      "systems": SYSTEMS,
-      "current_phase": CURRENT_PHASE,
-      "total_parties": TOTAL_PARTIES,
-      "phases_history": PHASES_HISTORY
-  }
-  try:
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-      json.dump(data, f, indent=4, ensure_ascii=False)
-  except Exception as e:
-    print(f"❌ Erreur lors de l'enregistrement des données : {e}")
+    data = {
+        "systems": SYSTEMS,
+        "current_phase": CURRENT_PHASE,
+        "total_parties": TOTAL_PARTIES,
+        "phases_history": PHASES_HISTORY,
+        "HonneurKeyWords": HonneurKeyWords
+    }
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print(f"❌ Erreur lors de l'enregistrement des données : {e}")
 
 
 # ----------------- CONFIG -----------------
@@ -157,6 +166,12 @@ async def autocomplete_phase(interaction: discord.Interaction, current: str):
       app_commands.Choice(name=p, value=p) for p in phases if current in p
   ][:25]
 
+async def autocomplete_honneur(interaction: discord.Interaction, current: str):
+    return [
+        app_commands.Choice(name=kw, value=kw)
+        for kw in HonneurKeyWords
+        if current.lower() in kw.lower()
+    ][:25]
 
 # ----------------- COMMANDES -----------------
 @tree.command(name="ajouter_partie",
@@ -553,6 +568,129 @@ async def ajouter_planete(interaction: discord.Interaction, systeme: str,
   save_data()
 
 
+# -------- Commande tirage au sort d'honneur  --------
+@tree.command(
+    name="rollhonneur",
+    description="Rechercher des posts contenant au moins un tag parmi les mots-clés donnés.",
+    guild=guild
+)
+@app_commands.describe(
+    mot1="Mot-clé obligatoire",
+    mot2="Mot-clé optionnel",
+    mot3="Mot-clé optionnel",
+    mot4="Mot-clé optionnel",
+    mot5="Mot-clé optionnel",
+    mot6="Mot-clé optionnel"
+)
+@app_commands.autocomplete(
+    mot1=autocomplete_honneur,
+    mot2=autocomplete_honneur,
+    mot3=autocomplete_honneur,
+    mot4=autocomplete_honneur,
+    mot5=autocomplete_honneur,
+    mot6=autocomplete_honneur
+)
+async def rollhonneur(
+    interaction: discord.Interaction,
+    mot1: str,
+    mot2: Optional[str] = None,
+    mot3: Optional[str] = None,
+    mot4: Optional[str] = None,
+    mot5: Optional[str] = None,
+    mot6: Optional[str] = None
+):
+    await interaction.response.defer(thinking=True, ephemeral=False)
+
+    keywords = [m.lower() for m in [mot1, mot2, mot3, mot4, mot5, mot6] if m]
+    matched_threads = []
+
+    for forum_id in FORUM_IDS:
+        forum = bot.get_channel(forum_id)
+        if not forum:
+            print(f"⚠️ Forum introuvable : {forum_id}")
+            continue
+
+        try:
+            active_threads = list(forum.threads)
+
+            archived_threads = []
+            async for t in forum.archived_threads(limit=None):
+                archived_threads.append(t)
+
+            threads = active_threads + archived_threads
+
+            for thread in threads:
+                if not thread.applied_tags:
+                    continue
+
+                tag_names = [tag.name.lower() for tag in thread.applied_tags]
+                if any(k in tag_names for k in keywords):
+                    matched_threads.append(thread)
+
+        except Exception as e:
+            print(f"⚠️ Erreur lors de la lecture du forum {forum_id}: {e}")
+
+    # Vérifie le nombre de threads trouvés
+    if len(matched_threads) < 3:
+        await interaction.followup.send(
+            "⚠️ Moins de 3 honneurs trouvés, veuillez vérifier les tableaux d'honneur ou bien contacter un admin."
+        )
+        return
+
+    # Tire un thread au hasard
+    chosen_thread = random.choice(matched_threads)
+    thread_url = f"https://discord.com/channels/{interaction.guild_id}/{chosen_thread.id}"
+
+    # Crée l’embed de résultat
+    embed = discord.Embed(
+        title=f"🎖️ Honneur sélectionné au hasard parmi {len(matched_threads)} résultats",
+        color=discord.Color.gold()
+    )
+    embed.add_field(name="Nom du post", value=chosen_thread.name, inline=False)
+    embed.add_field(name="Lien", value=f"[Ouvrir le post]({thread_url})", inline=False)
+
+    # Affiche les tags du thread s’ils existent
+    if chosen_thread.applied_tags:
+        tags_str = ", ".join(tag.name for tag in chosen_thread.applied_tags)
+        embed.add_field(name="Tags", value=tags_str, inline=False)
+
+    await interaction.followup.send(embed=embed)
+
+# ----------------- maj honneur tags -----------------
+@tree.command(
+    name="maj_honneurs",
+    description="Met à jour la liste HonneurKeyWords dans data.json à partir des tags présents dans les forums.",
+    guild=guild
+)
+async def maj_honneurs(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True)
+
+    all_tags = set()
+
+    for forum_id in FORUM_IDS:
+        forum = bot.get_channel(forum_id)
+        if not forum:
+            print(f"⚠️ Forum introuvable : {forum_id}")
+            continue
+
+        try:
+            for tag in forum.available_tags:
+                all_tags.add(tag.name)
+        except Exception as e:
+            print(f"⚠️ Erreur forum {forum_id} : {e}")
+
+    if not all_tags:
+        await interaction.followup.send("❌ Aucun tag trouvé dans les forums configurés.")
+        return
+
+    global HonneurKeyWords
+    HonneurKeyWords = sorted(list(all_tags))
+    save_data()
+
+    await interaction.followup.send(
+        f"✅ Liste des Honneurs mise à jour avec {len(HonneurKeyWords)} tags :\n"
+        f"```{', '.join(HonneurKeyWords)}```"
+    )
 # ----------------- HELP -----------------
 @tree.command(name="help",
               description="Afficher la liste des commandes",
@@ -570,16 +708,25 @@ async def help(interaction: discord.Interaction):
       "/ajouter_planete : Ajoute une planète à un système")
   await interaction.response.send_message(desc)
 
-
 # ----------------- EVENT -----------------
 @bot.event
 async def on_ready():
-  try:
-    guild_obj = discord.Object(id=GUILD_ID)
-    await bot.tree.sync(guild=guild_obj)
-    print(f"{bot.user} prêt et toutes les slash commands synchronisées !")
-  except Exception as e:
-    print(f"Erreur lors de la synchronisation des commandes : {e}")
+    print(f"✅ Connecté en tant que {bot.user}")
+
+    # Charger le cog
+    try:
+        await bot.load_extension("forum_recherche")
+        print("✅ Extension forum_recherche chargée")
+    except Exception as e:
+        print(f"⚠️ Impossible de charger forum_recherche : {e}")
+
+    # Synchroniser les commandes pour le serveur
+    try:
+        guild_obj = discord.Object(id=GUILD_ID)
+        await bot.tree.sync(guild=guild_obj)
+        print(f"🌍 Slash commands synchronisées sur le serveur {GUILD_ID}")
+    except Exception as e:
+        print(f"❌ Erreur lors de la synchronisation des commandes : {e}")
 
 
 # ----------------- RUN BOT -----------------
