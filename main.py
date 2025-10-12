@@ -8,6 +8,10 @@ import json
 import threading
 import requests
 import random
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import threading
+import time
 
 load_dotenv()
 
@@ -117,6 +121,33 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 load_data()
 tree = bot.tree
 
+# ----------------- SURVEILLANCE DATA -----------------
+class DataFileHandler(FileSystemEventHandler):
+    def __init__(self, file_path, callback):
+        self.file_path = file_path
+        self.callback = callback
+
+    def on_modified(self, event):
+        if event.src_path.endswith(self.file_path):
+            print(f"🔄 {self.file_path} modifié, rechargement des données...")
+            self.callback()
+
+def start_data_watch(file_path: str, callback):
+    event_handler = DataFileHandler(file_path, callback)
+    observer = Observer()
+    observer.schedule(event_handler, ".", recursive=False)
+    observer.start()
+
+    # Thread pour garder l'observer actif
+    def keep_alive():
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+
+    threading.Thread(target=keep_alive, daemon=True).start()
 
 # ----------------- UTILITAIRES -----------------
 def find_planet(planet_name: str) -> Optional[Tuple[str, str]]:
@@ -361,50 +392,102 @@ async def phase_stats(interaction: discord.Interaction, phase: int):
 @app_commands.describe(planete="Nom de la planète")
 @app_commands.autocomplete(planete=autocomplete_planete)
 async def planete(interaction: discord.Interaction, planete: str):
-  planet_info = find_planet(planete)
-  if planet_info is None:
-    await interaction.response.send_message(f"❌ Planète inconnue : {planete}",
-                                            ephemeral=True)
-    return
-  systeme, planete_found = planet_info
+    planet_info = find_planet(planete)
+    if planet_info is None:
+        await interaction.response.send_message(f"❌ Planète inconnue : {planete}",
+                                                ephemeral=True)
+        return
+    systeme, planete_found = planet_info
 
-  embed = discord.Embed(title=f"🪐 {planete_found} ({systeme})",
-                        color=discord.Color.green())
+    embed = discord.Embed(title=f"🪐 {systeme.upper()}",
+                          color=discord.Color.green())
 
-  # Crée une seule string avec une ligne vide entre chaque faction
-  value = ""
-  for f, data in SYSTEMS[systeme][planete_found].items():
-    value += f"**{f.upper()}**\n**Points : {data['points']}**\n`Batailles : {data['batailles']}`\n\n"
+    ICONS = {
+        "Défenseur": "🛡️",
+        "Envahisseur": "⚔️",
+        "Pirate": "💀"
+    }
 
-  embed.add_field(name="", value=value, inline=False)
-  await interaction.response.send_message(embed=embed)
+    value = f"▪️\u2003🌏 **{planete_found}**\n"
+
+    # Récupère les points pour chaque faction
+    scores = {f: SYSTEMS[systeme][planete_found][f]["points"] for f in FACTIONS}
+    max_score = max(scores.values())
+    leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
+
+    # Ordre forcé Défenseur → Envahisseur → Pirate
+    for f in ["Défenseur", "Envahisseur", "Pirate"]:
+        v = SYSTEMS[systeme][planete_found][f]
+        suffix = ""
+        if f in leaders:
+            if len(leaders) == 1:
+                suffix = " ➡️"
+            else:
+                suffix = " ⚖️"
+
+        # Affichage : icône + suffixe + nom de la faction
+        value += f"▪️\u2003 \u2003{ICONS.get(f,'')}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`\n"
+
+    embed.add_field(name="", value=value, inline=False)
+    await interaction.response.send_message(embed=embed)
 
 
 # ----------------- AUTRES COMMANDES -----------------
 @tree.command(
-    name="factions",
-    description="Afficher le total des parties et choix de planète par faction",
-    guild=guild)
-async def factions(interaction: discord.Interaction):
-  embed = discord.Embed(title=f"📊 Stats Factions - Phase {CURRENT_PHASE}",
-                        color=discord.Color.blue())
+    name="faction",
+    description="Afficher les statistiques d’une faction précise",
+    guild=guild
+)
+@app_commands.describe(faction="Nom de la faction (Défenseur, Envahisseur, Pirate)")
+@app_commands.choices(faction=[
+    app_commands.Choice(name="Défenseur", value="Défenseur"),
+    app_commands.Choice(name="Envahisseur", value="Envahisseur"),
+    app_commands.Choice(name="Pirate", value="Pirate")
+])
+async def faction(interaction: discord.Interaction, faction: app_commands.Choice[str]):
+    faction_nom = faction.value
+    total_points = 0
+    total_batailles = 0
+    planètes_gagnées = 0
+    systèmes_domines = {}
 
-  # Compter le nombre de choix de planète dans la phase en cours
-  choix_par_faction = {f: 0 for f in FACTIONS}
-  for systeme, planets in SYSTEMS.items():
-    for planet, data in planets.items():
-      for f, stats in data.items():
-        choix_par_faction[f] += stats["choix"]
+    # --- Analyse de chaque planète ---
+    for systeme, planets in SYSTEMS.items():
+        system_points = 0
+        for planete, data in planets.items():
+            pts = data[faction_nom]["points"]
+            total_points += pts
+            total_batailles += data[faction_nom]["batailles"]
 
-  for f in FACTIONS:
-    embed.add_field(
-        name=f,
-        value=
-        f"Parties disputées : {TOTAL_PARTIES[f]}\nChoix de planète : {choix_par_faction[f]}",
-        inline=False)
+            # Leader unique sur cette planète ?
+            max_points = max(fdata["points"] for fdata in data.values())
+            leaders = [f for f, fdata in data.items() if fdata["points"] == max_points]
+            if len(leaders) == 1 and leaders[0] == faction_nom:
+                planètes_gagnées += 1
+                system_points += 1
 
-  await interaction.response.send_message(embed=embed)
+        if system_points > 0:
+            systèmes_domines[systeme] = system_points
 
+    embed = discord.Embed(
+        title=f"🏳️ {faction_nom} – Rapport stratégique",
+        color=discord.Color.blue() if faction_nom == "Défenseur"
+        else discord.Color.red() if faction_nom == "Envahisseur"
+        else discord.Color.dark_gold()
+    )
+
+    embed.add_field(name="🔢 Points totaux", value=f"**{total_points}**", inline=True)
+    embed.add_field(name="⚔️ Batailles livrées", value=f"**{total_batailles}**", inline=True)
+    embed.add_field(name="🏆 Planètes contrôlées", value=f"**{planètes_gagnées}**", inline=True)
+
+    if systèmes_domines:
+        desc = "\n".join([f"• {sys} ({pts} planètes gagnées)" for sys, pts in systèmes_domines.items()])
+    else:
+        desc = "Aucun système dominé actuellement."
+
+    embed.add_field(name="🌌 Influence par système", value=desc, inline=False)
+    embed.set_footer(text="Les chiffres sont mis à jour automatiquement après chaque bataille.")
+    await interaction.response.send_message(embed=embed)
 
 # ----------------- SYSTEMES -----------------
 @tree.command(name="liste_sys",
@@ -420,50 +503,88 @@ async def liste_sys(interaction: discord.Interaction):
 # ----------------- STATS SYSTEME -----------------
 @tree.command(
     name="systeme",
-    description=
-    "Afficher les stats d’un système précis avec toutes ses planètes",
+    description="Afficher les stats d’un système précis avec toutes ses planètes",
     guild=guild)
 @app_commands.describe(systeme="Nom du système")
 @app_commands.autocomplete(systeme=autocomplete_systeme)
 async def systeme(interaction: discord.Interaction, systeme: str):
-  systeme = systeme.capitalize()
-  if systeme not in SYSTEMS:
-    await interaction.response.send_message(f"❌ Système inconnu : {systeme}",
-                                            ephemeral=True)
-    return
+    systeme = systeme.capitalize()
+    if systeme not in SYSTEMS:
+        await interaction.response.send_message(f"❌ Système inconnu : {systeme}",
+                                                ephemeral=True)
+        return
 
-  embed = discord.Embed(title=f"🪐{systeme.upper()}",
-                        color=discord.Color.green())
+    embed = discord.Embed(title=f"🪐 {systeme.upper()}",
+                          color=discord.Color.green())
 
-  for planet, data in SYSTEMS[systeme].items():
-    desc = ""
-    # Ligne invisible pour forcer l'indentation de la première ligne
-    for f, v in data.items():
-      desc += f"▪️\u2003{f} : **{v['points']} pts** | `{v['batailles']} batailles`\n"
-    embed.add_field(name=f"🌏 {planet}", value=desc, inline=False)
+    ICONS = {
+        "Défenseur": "🛡️",
+        "Envahisseur": "⚔️",
+        "Pirate": "💀"
+    }
 
-  await interaction.response.send_message(embed=embed)
+    for planet, data in SYSTEMS[systeme].items():
+        desc = f"▪️\u2003🌏 **{planet}**\n"
+
+        # --- Trouver le leader de la planète ---
+        scores = {f: data[f]["points"] for f in ["Défenseur", "Envahisseur", "Pirate"]}
+        max_score = max(scores.values())
+        leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
+
+        # Affichage forcé dans l'ordre Défenseur → Envahisseur → Pirate
+        for f in ["Défenseur", "Envahisseur", "Pirate"]:
+            v = data[f]
+            suffix = ""
+            if f in leaders:
+                suffix = " 🏆" if len(leaders) == 1 else " ⚖️"
+            desc += f"▪️\u2003 \u2003{ICONS.get(f,'')}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`\n"
+
+        embed.add_field(name="", value=desc, inline=False)
+
+    await interaction.response.send_message(embed=embed)
 
 
 # ----------------- STATS TOUT -----------------
 @tree.command(name="stats",
-              description=
-              "Afficher les stats de toutes les planètes de tous les systèmes",
+              description="Afficher les stats de toutes les planètes de tous les systèmes",
               guild=guild)
 async def stats(interaction: discord.Interaction):
-  embed = discord.Embed(title="⚔️ Statistiques de toutes les planètes",
-                        color=discord.Color.green())
+    embed = discord.Embed(title="⚔️ Statistiques de toutes les planètes",
+                          color=discord.Color.green())
 
-  for systeme, planets in SYSTEMS.items():
-    desc = ""
-    for planet, data in planets.items():
-      desc += f"▪️\u2003🌏 **{planet}**\n"
-      for f, v in data.items():
-        desc += f"▪️\u2003 \u2003{f} : **{v['points']} pts** | `{v['batailles']} batailles`\n"
-      desc += "\n"
-    embed.add_field(name=f"🪐 {systeme.upper()}", value=desc, inline=False)
+    # Icônes par faction
+    ICONS = {
+        "Défenseur": "🛡️",
+        "Envahisseur": "⚔️",
+        "Pirate": "💀"
+    }
 
-  await interaction.response.send_message(embed=embed)
+    for systeme, planets in SYSTEMS.items():
+        desc = ""
+        for planet, data in planets.items():
+            desc += f"▪️\u2003🌏 **{planet}**\n"
+
+            # Récupère les points pour chaque faction
+            scores = {f: data[f]["points"] for f in data.keys()}
+            max_score = max(scores.values())
+            leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
+
+            for f, v in data.items():
+                # Symbole leader / égalité
+                suffix = ""
+                if f in leaders:
+                    if len(leaders) == 1:
+                        suffix = " 🏆"
+                    else:
+                        suffix = " ⚖️"
+
+                # Affichage : icône + suffixe + nom de la faction
+                desc += f"▪️\u2003 \u2003{ICONS.get(f,'')}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`\n"
+            desc += "\n"
+
+        embed.add_field(name=f"🪐 {systeme.upper()}", value=desc, inline=False)
+
+    await interaction.response.send_message(embed=embed)
 
 
 # ----------------- MODIFIER STATS -----------------
@@ -784,4 +905,5 @@ if not token:
     exit(1)
 
 load_data()
+start_data_watch(DATA_FILE, load_data) #démarrage de la surveillance
 bot.run(token)
