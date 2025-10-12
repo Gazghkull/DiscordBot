@@ -16,109 +16,85 @@ load_dotenv()
 # ----------------- FACTIONS -----------------
 FACTIONS = ["Envahisseur", "Défenseur", "Pirate"]
 
-# ----------------- PLANETES & SYSTEMS -----------------
+# ----------------- SECTEURS, SOUS-SECTEURS, SYSTEMS & PLANETS -----------------
+SECTORS = {}  # sera chargé depuis le JSON
+
 def create_planet_stats():
     return {f: {"points": 0, "batailles": 0, "choix": 0} for f in FACTIONS}
 
-# Exemple par défaut pour SYSTEMS
-SYSTEMS = {
-    "Memlock": {
-        "Iliar II": create_planet_stats(),
-        "Memlock": create_planet_stats(),
-        "Udesore": create_planet_stats(),
-        "Station Ivius": create_planet_stats(),
-        "Telock": create_planet_stats()
-    }
-    # Les autres systèmes seront ajoutés par la suite
-}
+def find_planet(planete: str) -> Optional[Tuple[str, str, str, str]]:
+    """
+    Retourne : secteur, sous_secteur, système, planète
+    """
+    for secteur_name, sous_secteurs in SECTORS.items():
+        for sous_secteur_name, systems in sous_secteurs.items():
+            for system_name, planets in systems.items():
+                if planete in planets:
+                    return secteur_name, sous_secteur_name, system_name, planete
+    return None
 
-# Règles pour chaque système : PV et bonus système
-SYSTEM_RULES = {
-    "Memlock": {
-        "pv_thresholds": [2, 5],  # PV à 2 et 5 points
-        "bonus_threshold": 3,     # Bonus système au-dessus de 3 points
-        "planets": {
-            "Iliar II": 1,
-            "Memlock": 2,
-            "Udesore": 1,
-            "Station Ivius": 1,
-            "Telock": 2
-        }
-    },
-    "Hovot": {
-        "pv_thresholds": [2, 5],
-        "bonus_threshold": 3,
-        "planets": {
-            "Maben": 1,
-            "Vivim": 1,
-            "Station d'ancrage des Navigateurs de l'Obscure": 2,
-            "Hebda": 1
-        }
-    },
-    "Acraelon": {
-        "pv_thresholds": [2, 5],
-        "bonus_threshold": 3,
-        "planets": {
-            "Meggdal": 2,
-            "Sumemnal": 1,
-            "Station Bénédiction du champ Gleecer": 2,
-            "Arrabal": 2,
-            "Maeron": 1
-        }
-    },
-    "Umnal": {
-        "pv_thresholds": [2],
-        "bonus_threshold": 3,
-        "planets": {
-            "Takfor": 2,
-            "Umnal Silva": 1,
-            "Umnalis": 1
-        }
-    },
-    "Makravor": {
-        "pv_thresholds": [3, 6],
-        "bonus_threshold": 4,
-        "planets": {
-            "Atar Oblitus": 1,
-            "Atar Secundus": 2,
-            "Atar Prime": 1,
-            "Twi’tai": 2,
-            "Makravor": 2,
-            "Vint": 1
-        }
-    },
-    "Arar": {
-        "pv_thresholds": [2],
-        "bonus_threshold": 3,
-        "planets": {
-            "Arar I": 1,
-            "Berlag": 2
-        }
-    }
-}
+def all_planets() -> List[str]:
+    return [
+        p
+        for sous_secteurs in SECTORS.values()
+        for systems in sous_secteurs.values()
+        for planets in systems.values()
+        for p in planets.keys()
+    ]
+
+def all_systems() -> List[str]:
+    return [
+        s
+        for sous_secteurs in SECTORS.values()
+        for systems in sous_secteurs.values()
+        for s in systems.keys()
+    ]
+
+def get_planet_data(planete: str):
+    info = find_planet(planete)
+    if not info:
+        return None
+    secteur, sous_secteur, systeme, planete_name = info
+    return SECTORS[secteur][sous_secteur][systeme][planete_name]
+
+def get_system_planets(systeme: str):
+    for secteur, sous_secteurs in SECTORS.items():
+        for sous_secteur, systems in sous_secteurs.items():
+            if systeme in systems:
+                return systems[systeme]
+    return None
+
+def admin_only():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        # Vérifie si l'utilisateur est administrateur
+        return interaction.user.guild_permissions.administrator
+    return app_commands.check(predicate)
+
+# ----------------- SYSTEM RULES -----------------
+SYSTEM_RULES = {}  # sera chargé depuis le JSON
 
 # ----------------- PHASES -----------------
-CURRENT_PHASE = 1  # Phase en cours
-TOTAL_PARTIES = {f: 0 for f in FACTIONS}  # Batailles phase en cours
-PHASES_HISTORY = {}  # Historique des phases : PV et bonus système
+CURRENT_PHASE = {}
+TOTAL_PARTIES = {f: 0 for f in FACTIONS}
+PHASES_HISTORY = {}
 DATA_FILE = "data.json"
 
 # ----------------- HONNEUR FORUM IDS -----------------
 FORUM_IDS = [1424007352348049598, 1424806344417873960]
-
 HonneurKeyWords = []
 
-ACTIVE_SYSTEMS = {system: True for system in SYSTEM_RULES.keys()}
+ACTIVE_SYSTEMS = {}  # sera chargé depuis le JSON
+
 # ----------------- LOAD/SAVE DATA -----------------
 def load_data():
-    global SYSTEMS, SYSTEM_RULES, ACTIVE_SYSTEMS, CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY, HonneurKeyWords
+    global SECTORS, SYSTEM_RULES, ACTIVE_SYSTEMS, CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY, HonneurKeyWords
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            SYSTEMS = data.get("systems", SYSTEMS)
+            SECTORS = data.get("sectors", SECTORS)
             SYSTEM_RULES = data.get("system_rules", SYSTEM_RULES)
-            ACTIVE_SYSTEMS = data.get("active_systems", {s: True for s in SYSTEM_RULES.keys()})
-            CURRENT_PHASE = data.get("current_phase", 1)
+            ACTIVE_SYSTEMS = data.get("active_systems", ACTIVE_SYSTEMS)
+            CURRENT_PHASE = data.get("phase_courante", {"phase": 1, "secteur": "Eguedine"})
             TOTAL_PARTIES = data.get("total_parties", {f: 0 for f in FACTIONS})
             PHASES_HISTORY = data.get("phases_history", {})
             HonneurKeyWords = data.get("HonneurKeyWords", [])
@@ -133,10 +109,10 @@ def save_data():
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump({
-                "systems": SYSTEMS,
+                "sectors": SECTORS,
                 "system_rules": SYSTEM_RULES,
                 "active_systems": ACTIVE_SYSTEMS,
-                "current_phase": CURRENT_PHASE,
+                "phase_courante": CURRENT_PHASE,
                 "total_parties": TOTAL_PARTIES,
                 "phases_history": PHASES_HISTORY,
                 "HonneurKeyWords": HonneurKeyWords
@@ -148,7 +124,6 @@ def save_data():
 # ----------------- CONFIG -----------------
 GUILD_ID = 1384163146050048092
 guild = discord.Object(id=GUILD_ID)
-
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 load_data()
@@ -178,101 +153,52 @@ def start_data_watch(file_path: str, callback):
         observer.join()
     threading.Thread(target=keep_alive, daemon=True).start()
 
-# ----------------- UTILITAIRES -----------------
-def find_planet(planet_name: str) -> Optional[Tuple[str, str]]:
-    for systeme, planets in SYSTEMS.items():
-        if planet_name in planets:
-            return systeme, planet_name
-    return None
-
-def all_planets() -> List[str]:
-    return [p for planets in SYSTEMS.values() for p in planets.keys()]
-
-# ----------------- CALCUL PV ET BONUS -----------------
-def calculate_system_scores(systeme: str, phase: Optional[int] = None):
-    """
-    Retourne pour le système donné :
-        pv_scores : {faction: nb de PV acquis en phase précédente ou avancement}
-        bonus_owner : faction ou None
-    """
-    rules = SYSTEM_RULES[systeme]
-    planets_values = rules["planets"]
-    pv_thresholds = rules["pv_thresholds"]
-    bonus_threshold = rules["bonus_threshold"]
-
-    # Somme des points de chaque faction
-    faction_points = {f: 0 for f in FACTIONS}
-    for planet, value in planets_values.items():
-        for f in FACTIONS:
-            faction_points[f] += SYSTEMS[systeme][planet][f]["points"]
-
-    # Calcul des PV
-    pv_scores = {f: 0 for f in FACTIONS}
-    for threshold in pv_thresholds:
-        for f in FACTIONS:
-            if faction_points[f] >= threshold:
-                pv_scores[f] += 1
-
-    # Bonus système : seulement la faction la plus haute, sauf égalité
-    max_pts = max(faction_points.values())
-    owners = [f for f, pts in faction_points.items() if pts == max_pts and pts >= bonus_threshold]
-    bonus_owner = owners[0] if len(owners) == 1 else None
-
-    # Si phase passée, prendre PV/bonus du PHASES_HISTORY
-    if phase is not None and phase in PHASES_HISTORY:
-        phase_data = PHASES_HISTORY[phase].get("systems_scores", {})
-        pv_scores = phase_data.get("pv_scores", pv_scores)
-        bonus_owner = phase_data.get("bonus_owner", bonus_owner)
-
-    return pv_scores, bonus_owner
-
-
 # ----------------- AUTOCOMPLETION -----------------
 async def autocomplete_planete(interaction: discord.Interaction, current: str):
-  return [
-      app_commands.Choice(name=p, value=p) for p in all_planets()
-      if current.lower() in p.lower()
-  ][:25]
-
+    return [app_commands.Choice(name=p, value=p) for p in all_planets() if current.lower() in p.lower()][:25]
 
 async def autocomplete_faction(interaction: discord.Interaction, current: str):
-  return [
-      app_commands.Choice(name=f, value=f) for f in FACTIONS
-      if current.lower() in f.lower()
-  ][:25]
-
+    return [app_commands.Choice(name=f, value=f) for f in FACTIONS if current.lower() in f.lower()][:25]
 
 async def autocomplete_numbers(interaction: discord.Interaction, current: str):
-  numbers = [str(i) for i in range(0, 21)]
-  return [
-      app_commands.Choice(name=n, value=n) for n in numbers if current in n
-  ][:25]
-
+    numbers = [str(i) for i in range(0, 21)]
+    return [app_commands.Choice(name=n, value=n) for n in numbers if current in n][:25]
 
 async def autocomplete_systeme(interaction: discord.Interaction, current: str):
-  return [
-      app_commands.Choice(name=s, value=s) for s in SYSTEMS.keys()
-      if current.lower() in s.lower()
-  ][:25]
-
+    return [app_commands.Choice(name=s, value=s) for s in all_systems() if current.lower() in s.lower()][:25]
 
 async def autocomplete_phase(interaction: discord.Interaction, current: str):
-  phases = [str(i) for i in range(1, CURRENT_PHASE + 1)]
-  return [
-      app_commands.Choice(name=p, value=p) for p in phases if current in p
-  ][:25]
+    current_phase_number = CURRENT_PHASE.get("phase", 1)
+    phases = [str(i) for i in range(1, current_phase_number + 1)]
+    return [app_commands.Choice(name=p, value=p) for p in phases if current in p][:25]
 
 async def autocomplete_honneur(interaction: discord.Interaction, current: str):
+    return [app_commands.Choice(name=kw, value=kw) for kw in HonneurKeyWords if current.lower() in kw.lower()][:25]
+
+async def autocomplete_sous_secteur(interaction: discord.Interaction, current: str):
+    secteur_courant = CURRENT_PHASE.get("secteur")
+    if not secteur_courant or secteur_courant not in SECTORS:
+        return []
+
+    # Liste des sous-secteurs disponibles dans le secteur courant
+    sous_secteurs = [ss for ss in SECTORS[secteur_courant].keys() if current.lower() in ss.lower()]
+
+    # Limiter à 25 choix comme Discord l'impose
+    return [app_commands.Choice(name=ss, value=ss) for ss in sous_secteurs][:25]
+
+# --- Autocomplétion des numéros de phase ---
+async def autocomplete_phase(interaction: discord.Interaction, current: str):
+    phases = [str(i) for i in range(1, 16)]
     return [
-        app_commands.Choice(name=kw, value=kw)
-        for kw in HonneurKeyWords
-        if current.lower() in kw.lower()
+        app_commands.Choice(name=p, value=int(p))
+        for p in phases if current in p
     ][:25]
 
+# ---------------------------------------------
+# ---------------------------------------------
 # ----------------- COMMANDES -----------------
-@tree.command(name="ajout",
-              description="Ajouter une partie/bataille",
-              guild=guild)
+# ----------------- COMMANDE /ajout -----------------
+@tree.command(name="ajout", description="Ajouter une partie/bataille", guild=guild)
 @app_commands.describe(
     planete="Nom de la planète",
     gagnant="Faction gagnante ou 'Egalite'",
@@ -280,175 +206,291 @@ async def autocomplete_honneur(interaction: discord.Interaction, current: str):
     participant1="Premier participant",
     participant2="Deuxième participant",
     participant3="Troisième participant (facultatif)",
-    phase="Phase dans laquelle ajouter la partie (optionnel)")
-@app_commands.autocomplete(planete=autocomplete_planete,
-                           gagnant=autocomplete_faction,
-                           choix_planete=autocomplete_faction,
-                           participant1=autocomplete_faction,
-                           participant2=autocomplete_faction,
-                           participant3=autocomplete_faction,
+    phase="Phase dans laquelle ajouter la partie (optionnel)"
+)
+@app_commands.autocomplete(planete=autocomplete_planete, gagnant=autocomplete_faction,
+                           choix_planete=autocomplete_faction, participant1=autocomplete_faction,
+                           participant2=autocomplete_faction, participant3=autocomplete_faction,
                            phase=autocomplete_phase)
-async def ajout(interaction: discord.Interaction,
-                         planete: str,
-                         gagnant: str,
-                         choix_planete: str,
-                         participant1: str,
-                         participant2: str,
-                         participant3: Optional[str] = None,
-                         phase: Optional[int] = None):
-  global CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY
+@admin_only()
+async def ajout(interaction: discord.Interaction, planete: str, gagnant: str, choix_planete: str,
+                participant1: str, participant2: str, participant3: Optional[str] = None,
+                phase: Optional[int] = None):
+    global CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY
 
-  participants_list = [
-      p for p in [participant1, participant2, participant3] if p
-  ]
-  planet_info = find_planet(planete)
-  if planet_info is None:
-    await interaction.response.send_message(f"❌ Planète inconnue : {planete}",
-                                            ephemeral=True)
-    return
-  systeme, planete_found = planet_info
+    participants_list = [p for p in [participant1, participant2, participant3] if p]
 
-  gagnant = gagnant.capitalize()
-  choix_planete = choix_planete.capitalize()
+    # --- Recherche de la planète dans la nouvelle hiérarchie ---
+    systeme_found = None
+    sous_secteur_found = None
+    secteur_found = None
 
-  # Validation participants
-  for f in participants_list:
-    if f not in FACTIONS:
-      await interaction.response.send_message(f"❌ Faction inconnue : {f}",
-                                              ephemeral=True)
-      return
-  if gagnant != "Egalite" and gagnant not in participants_list:
-    await interaction.response.send_message(
-        "❌ Le gagnant doit être parmi les participants ou 'Egalite'",
-        ephemeral=True)
-    return
-  if choix_planete not in participants_list:
-    await interaction.response.send_message(
-        "❌ La faction qui choisit la planète doit être parmi les participants",
-        ephemeral=True)
-    return
+    for secteur, sous_secteurs in SECTORS.items():
+        for sous_secteur, systemes in sous_secteurs.items():
+            for systeme, planets in systemes.items():
+                if planete in planets:
+                    systeme_found = systeme
+                    sous_secteur_found = sous_secteur
+                    secteur_found = secteur
+                    planet_info = planets[planete]
+                    break
+            if systeme_found:
+                break
+        if systeme_found:
+            break
 
-  # Déterminer la phase
-  target_phase = phase if phase is not None else CURRENT_PHASE
+    if not systeme_found:
+        await interaction.response.send_message(f"❌ Planète inconnue : {planete}", ephemeral=True)
+        return
 
-  # Si on ajoute dans la phase en cours, on incrémente TOTAL_PARTIES
-  if target_phase == CURRENT_PHASE:
+    gagnant = gagnant.capitalize()
+    choix_planete = choix_planete.capitalize()
+
+    # Validation participants
     for f in participants_list:
-      TOTAL_PARTIES[f] += 1
+        if f not in FACTIONS:
+            await interaction.response.send_message(f"❌ Faction inconnue : {f}", ephemeral=True)
+            return
+    if gagnant != "Egalite" and gagnant not in participants_list:
+        await interaction.response.send_message(
+            "❌ Le gagnant doit être parmi les participants ou 'Egalite'", ephemeral=True
+        )
+        return
+    if choix_planete not in participants_list:
+        await interaction.response.send_message(
+            "❌ La faction qui choisit la planète doit être parmi les participants", ephemeral=True
+        )
+        return
 
-  # Attribution des points et choix pour la planète
-  for f in participants_list:
-    # Points (conservés entre les phases)
-    if f == gagnant:
-      SYSTEMS[systeme][planete_found][f]["points"] += 3
-    elif gagnant == "Egalite":
-      SYSTEMS[systeme][planete_found][f]["points"] += 2
-    else:
-      SYSTEMS[systeme][planete_found][f]["points"] += 1
+    # Déterminer la phase
+    target_phase = phase if phase is not None else CURRENT_PHASE["phase"]
 
-    # Batailles & choix (par phase)
-    if target_phase == CURRENT_PHASE:
-      SYSTEMS[systeme][planete_found][f]["batailles"] += 1
-      if f == choix_planete:
-        SYSTEMS[systeme][planete_found][f]["choix"] += 1
-    else:
-      # Si ajout dans une phase antérieure
-      if target_phase not in PHASES_HISTORY:
-        PHASES_HISTORY[target_phase] = {
-            "total_parties": {
-                f: 0
-                for f in FACTIONS
-            },
-            "choix_planete": {
-                f: 0
-                for f in FACTIONS
-            }
-        }
-      PHASES_HISTORY[target_phase]["total_parties"][f] += 1
-      if f == choix_planete:
-        PHASES_HISTORY[target_phase]["choix_planete"][f] += 1
+    # Si on ajoute dans la phase en cours, on incrémente TOTAL_PARTIES
+    if target_phase == CURRENT_PHASE["phase"]:
+        for f in participants_list:
+            TOTAL_PARTIES[f] += 1
 
-  await interaction.response.send_message(
-      f"✅ Partie ajoutée sur **{planete_found} ({systeme})** dans la phase {target_phase} !\n"
-      f"Gagnant : **{gagnant}**, choix de la planète : **{choix_planete}**, participants : {', '.join(participants_list)}"
-  )
-  save_data()
+    # Attribution des points et choix pour la planète
+    for f in participants_list:
+        # Points (conservés entre les phases)
+        if f == gagnant:
+            planet_info[f]["points"] += 3
+        elif gagnant == "Egalite":
+            planet_info[f]["points"] += 2
+        else:
+            planet_info[f]["points"] += 1
+
+        # Batailles & choix (par phase)
+        if target_phase == CURRENT_PHASE["phase"]:
+            planet_info[f]["batailles"] += 1
+            if f == choix_planete:
+                planet_info[f]["choix"] += 1
+        else:
+            if target_phase not in PHASES_HISTORY:
+                PHASES_HISTORY[target_phase] = {
+                    "total_parties": {f: 0 for f in FACTIONS},
+                    "choix_planete": {f: 0 for f in FACTIONS}
+                }
+            PHASES_HISTORY[target_phase]["total_parties"][f] += 1
+            if f == choix_planete:
+                PHASES_HISTORY[target_phase]["choix_planete"][f] += 1
+
+    await interaction.response.send_message(
+        f"✅ Partie ajoutée sur **{planete} ({systeme_found})** dans la phase {target_phase} !\n"
+        f"Gagnant : **{gagnant}**, choix de la planète : **{choix_planete}**, participants : {', '.join(participants_list)}"
+    )
+    save_data()
 
 
 # ----------------- Clôturer phase -----------------
-@tree.command(name="cloture",
-              description="Clôturer la phase en cours",
-              guild=guild)
-async def cloture(interaction: discord.Interaction):
-  global CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY
+@tree.command(
+    name="cloture",
+    description="Clôturer la phase en cours",
+    guild=guild
+)
+@app_commands.describe(
+    nouveau_sous_secteur="Nouveau sous-secteur (obligatoire si la phase locale est multiple de 3)"
+)
+@app_commands.autocomplete(nouveau_sous_secteur=autocomplete_sous_secteur)
+@admin_only()
+async def cloture(interaction: discord.Interaction, nouveau_sous_secteur: Optional[str] = None):
+    global CURRENT_PHASE, TOTAL_PARTIES, PHASES_HISTORY, ACTIVE_SYSTEMS
 
-  # Sauvegarder stats de la phase
-  phase_data = {
-      "total_parties": TOTAL_PARTIES.copy(),
-      "choix_planete": {
-          f: 0
-          for f in FACTIONS
-      }
-  }
-  for systeme, planets in SYSTEMS.items():
-    for planet, data in planets.items():
-      for f, stats in data.items():
-        phase_data["choix_planete"][f] += stats["choix"]
+    secteur = CURRENT_PHASE.get("secteur")
+    ancien_ss = CURRENT_PHASE.get("sous_secteur")
 
-  PHASES_HISTORY[CURRENT_PHASE] = phase_data
+    if not secteur or not ancien_ss:
+        await interaction.response.send_message(
+            "❌ Impossible de déterminer le secteur ou le sous-secteur courant.",
+            ephemeral=True
+        )
+        return
 
-  # Réinitialiser compteurs de la phase
-  TOTAL_PARTIES = {f: 0 for f in FACTIONS}
-  for systeme, planets in SYSTEMS.items():
-    for planet, data in planets.items():
-      for f in data:
-        data[f]["batailles"] = 0
-        data[f]["choix"] = 0
+    # --- Déterminer la phase locale actuelle ---
+    local_history = PHASES_HISTORY.get(ancien_ss, {})
+    if local_history:
+        phase_local = max(int(k) for k in local_history.keys()) + 1
+    else:
+        phase_local = 1
 
-  CURRENT_PHASE += 1
+    # --- Vérifier changement de sous-secteur ---
+    if phase_local % 3 == 0:
+        if not nouveau_sous_secteur:
+            await interaction.response.send_message(
+                "⚠️ Fin de phase 3 (guerre totale) : vous devez indiquer un nouveau sous-secteur.",
+                ephemeral=True
+            )
+            return
+        if nouveau_sous_secteur not in SECTORS.get(secteur, {}):
+            await interaction.response.send_message(
+                f"❌ Sous-secteur inconnu dans le secteur {secteur}.",
+                ephemeral=True
+            )
+            return
+    else:
+        if nouveau_sous_secteur:
+            await interaction.response.send_message(
+                "⚠️ Vous ne pouvez pas changer de sous-secteur maintenant : la phase locale n'est pas multiple de 3.",
+                ephemeral=True
+            )
+            return
 
-  await interaction.response.send_message(
-      f"✅ Phase {CURRENT_PHASE - 1} clôturée ! Passage à la phase {CURRENT_PHASE}."
-  )
-  save_data()
+    # --- Sauvegarde ordonnée des statistiques ---
+    ordre_factions = ["Défenseur", "Envahisseur", "Pirate"]
 
+    phase_data = {
+        "total_parties": {f: TOTAL_PARTIES.get(f, 0) for f in ordre_factions},
+        "choix_planete": {f: 0 for f in ordre_factions}
+    }
+
+    for systeme, planets in SECTORS[secteur][ancien_ss].items():
+        for planet, data in planets.items():
+            for f, stats in data.items():
+                if f in phase_data["choix_planete"]:
+                    phase_data["choix_planete"][f] += stats.get("choix", 0)
+
+    # Créer le sous-secteur s'il n'existe pas encore
+    if ancien_ss not in PHASES_HISTORY:
+        PHASES_HISTORY[ancien_ss] = {}
+
+    PHASES_HISTORY[ancien_ss][str(phase_local)] = phase_data
+
+    # --- Réinitialiser compteurs ---
+    TOTAL_PARTIES = {f: 0 for f in ordre_factions}
+    for systeme, planets in SECTORS[secteur][ancien_ss].items():
+        for planet, data in planets.items():
+            for f in data:
+                data[f]["batailles"] = 0
+                data[f]["choix"] = 0
+
+    # --- Si changement de sous-secteur ---
+    if phase_local % 3 == 0 and nouveau_sous_secteur:
+        # Désactivation ancien sous-secteur
+        if secteur in ACTIVE_SYSTEMS and ancien_ss in ACTIVE_SYSTEMS[secteur]:
+            for systeme in ACTIVE_SYSTEMS[secteur][ancien_ss]:
+                ACTIVE_SYSTEMS[secteur][ancien_ss][systeme] = False
+
+        # Activation nouveau sous-secteur
+        if secteur not in ACTIVE_SYSTEMS:
+            ACTIVE_SYSTEMS[secteur] = {}
+        if nouveau_sous_secteur not in ACTIVE_SYSTEMS[secteur]:
+            ACTIVE_SYSTEMS[secteur][nouveau_sous_secteur] = {}
+        for systeme in SECTORS[secteur][nouveau_sous_secteur]:
+            ACTIVE_SYSTEMS[secteur][nouveau_sous_secteur][systeme] = True
+
+        CURRENT_PHASE["sous_secteur"] = nouveau_sous_secteur
+
+        # Calculer la nouvelle phase pour le nouveau sous-secteur
+        new_hist = PHASES_HISTORY.get(nouveau_sous_secteur, {})
+        next_phase = max((int(k) for k in new_hist.keys()), default=0) + 1
+        CURRENT_PHASE["phase"] = next_phase
+
+        save_data()
+        await interaction.response.send_message(
+            f"✅ Phase {phase_local} clôturée dans **{ancien_ss}**.\n"
+            f"➡️ Changement vers **{nouveau_sous_secteur}**, début de la **phase {next_phase}**."
+        )
+        return
+
+    # --- Sinon, même sous-secteur ---
+    CURRENT_PHASE["phase"] = phase_local + 1
+
+    save_data()
+    await interaction.response.send_message(
+        f"✅ Phase {phase_local} clôturée. Nouvelle phase : **{CURRENT_PHASE['phase']}** "
+        f"(Sous-secteur : **{ancien_ss}**)."
+    )
 
 # ----------------- Commande phase actuelle -----------------
-@tree.command(name="phase",
-              description="Afficher la phase en cours",
-              guild=guild)
+@tree.command(
+    name="phase",
+    description="Afficher la phase en cours",
+    guild=guild
+)
 async def phase(interaction: discord.Interaction):
-  await interaction.response.send_message(
-      f"📌 Phase actuelle : **{CURRENT_PHASE}**")
+    phase_num = CURRENT_PHASE.get("phase", 1)
+    secteur = CURRENT_PHASE.get("secteur", "Inconnu")
+    sous_secteur = CURRENT_PHASE.get("sous_secteur", "Inconnu")
+
+    await interaction.response.send_message(
+        f"📌 Phase actuelle : **{phase_num}**\n"
+        f"🏛️ Secteur : **{secteur}**\n"
+        f"🌌 Sous-secteur : **{sous_secteur}**"
+    )
 
 
 # ----------------- Commande stats phase -----------------
-@tree.command(name="phase_stats",
-              description="Afficher les stats d'une phase précédente",
-              guild=guild)
-@app_commands.describe(phase="Numéro de la phase")
-@app_commands.autocomplete(phase=autocomplete_phase)
-async def phase_stats(interaction: discord.Interaction, phase: int):
-  if phase not in PHASES_HISTORY:
-    await interaction.response.send_message(f"❌ Phase {phase} inconnue",
-                                            ephemeral=True)
-    return
+# --- Commande /phase_stats ---
+@tree.command(
+    name="phase_stats",
+    description="Afficher les statistiques d'une phase spécifique dans un sous-secteur",
+    guild=guild
+)
+@app_commands.describe(
+    phase="Numéro de la phase (1 à 15)",
+    sous_secteur="Sous-secteur à consulter"
+)
+@app_commands.autocomplete(
+    phase=autocomplete_phase,
+    sous_secteur=autocomplete_sous_secteur  # ✅ on réutilise ton autocomplete existant
+)
+async def phase_stats(interaction: discord.Interaction, phase: int, sous_secteur: str):
+    # Vérification du sous-secteur
+    if sous_secteur not in PHASES_HISTORY:
+        await interaction.response.send_message(
+            f"❌ Aucun historique trouvé pour le sous-secteur **{sous_secteur}**.",
+            ephemeral=True
+        )
+        return
 
-  data = PHASES_HISTORY[phase]
-  embed = discord.Embed(title=f"📊 Stats Phase {phase}",
-                        color=discord.Color.blue())
+    # Vérification de la phase dans le sous-secteur
+    if str(phase) not in PHASES_HISTORY[sous_secteur]:
+        await interaction.response.send_message(
+            f"❌ Phase {phase} inconnue dans le sous-secteur **{sous_secteur}**.",
+            ephemeral=True
+        )
+        return
 
-  for f in FACTIONS:
-    total_parties = data["total_parties"].get(f, 0)
-    choix_planete = data["choix_planete"].get(f, 0)
-    embed.add_field(
-        name=f,
-        value=
-        f"Parties disputées : {total_parties}\nChoix de planète : {choix_planete}",
-        inline=False)
+    data = PHASES_HISTORY[sous_secteur][str(phase)]
 
-  await interaction.response.send_message(embed=embed)
+    # Création de l'embed
+    embed = discord.Embed(
+        title=f"📊 Statistiques - Phase {phase} ({sous_secteur})",
+        color=discord.Color.blue()
+    )
 
+    # Ordre fixe : Défenseur → Envahisseur → Pirate
+    ordered_factions = ["Défenseur", "Envahisseur", "Pirate"]
+    for f in ordered_factions:
+        total_parties = data["total_parties"].get(f, 0)
+        choix_planete = data["choix_planete"].get(f, 0)
+        embed.add_field(
+            name=f"**{f}**",
+            value=f"🎯 Parties disputées : **{total_parties}**\n🌍 Choix de planète : **{choix_planete}**",
+            inline=False
+        )
+
+    await interaction.response.send_message(embed=embed)
 
 # ----------------- STATS PLANETE -----------------
 @tree.command(name="planete",
@@ -457,113 +499,41 @@ async def phase_stats(interaction: discord.Interaction, phase: int):
 @app_commands.describe(planete="Nom de la planète")
 @app_commands.autocomplete(planete=autocomplete_planete)
 async def planete(interaction: discord.Interaction, planete: str):
-    planet_info = find_planet(planete)
-    if planet_info is None:
-        await interaction.response.send_message(f"❌ Planète inconnue : {planete}",
-                                                ephemeral=True)
+    # Parcours hiérarchique secteur → sous_secteur → système → planète
+    planet_data = None
+    systeme_found = None
+
+    for secteur, sous_secteurs in SECTORS.items():
+        for sous_secteur, systemes in sous_secteurs.items():
+            for systeme, planets in systemes.items():
+                if planete in planets:
+                    planet_data = planets[planete]
+                    systeme_found = systeme
+                    break
+            if planet_data:
+                break
+        if planet_data:
+            break
+
+    if planet_data is None:
+        await interaction.response.send_message(f"❌ Planète inconnue : {planete}", ephemeral=True)
         return
-    systeme, planete_found = planet_info
 
-    embed = discord.Embed(title=f"🪐 {systeme.upper()}",
-                          color=discord.Color.green())
+    embed = discord.Embed(title=f"🪐 {systeme_found.upper()}", color=discord.Color.green())
+    ICONS = {"Défenseur": "🛡️", "Envahisseur": "⚔️", "Pirate": "💀"}
 
-    ICONS = {
-        "Défenseur": "🛡️",
-        "Envahisseur": "⚔️",
-        "Pirate": "💀"
-    }
-
-    value = f"▪️\u2003🌏 **{planete_found}**\n"
-
-    # Récupère les points pour chaque faction
-    scores = {f: SYSTEMS[systeme][planete_found][f]["points"] for f in FACTIONS}
+    value = f"▪️\u2003🌏 **{planete}**\n"
+    scores = {f: planet_data[f]["points"] for f in FACTIONS}
     max_score = max(scores.values())
     leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
 
-    # Ordre forcé Défenseur → Envahisseur → Pirate
     for f in ["Défenseur", "Envahisseur", "Pirate"]:
-        v = SYSTEMS[systeme][planete_found][f]
-        suffix = ""
-        if f in leaders:
-            if len(leaders) == 1:
-                suffix = " ➡️"
-            else:
-                suffix = " ⚖️"
-
-        # Affichage : icône + suffixe + nom de la faction
+        v = planet_data[f]
+        suffix = " 🏆" if f in leaders and len(leaders) == 1 else " ⚖️" if f in leaders else ""
         value += f"▪️\u2003 \u2003{ICONS.get(f,'')}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`\n"
 
     embed.add_field(name="", value=value, inline=False)
     await interaction.response.send_message(embed=embed)
-
-
-# ----------------- AUTRES COMMANDES -----------------
-@tree.command(
-    name="faction",
-    description="Afficher les statistiques d’une faction précise",
-    guild=guild
-)
-@app_commands.describe(faction="Nom de la faction (Défenseur, Envahisseur, Pirate)")
-@app_commands.choices(faction=[
-    app_commands.Choice(name="Défenseur", value="Défenseur"),
-    app_commands.Choice(name="Envahisseur", value="Envahisseur"),
-    app_commands.Choice(name="Pirate", value="Pirate")
-])
-async def faction(interaction: discord.Interaction, faction: app_commands.Choice[str]):
-    faction_nom = faction.value
-    total_points = 0
-    total_batailles = 0
-    planètes_gagnées = 0
-    systèmes_domines = {}
-
-    # --- Analyse de chaque planète ---
-    for systeme, planets in SYSTEMS.items():
-        system_points = 0
-        for planete, data in planets.items():
-            pts = data[faction_nom]["points"]
-            total_points += pts
-            total_batailles += data[faction_nom]["batailles"]
-
-            # Leader unique sur cette planète ?
-            max_points = max(fdata["points"] for fdata in data.values())
-            leaders = [f for f, fdata in data.items() if fdata["points"] == max_points]
-            if len(leaders) == 1 and leaders[0] == faction_nom:
-                planètes_gagnées += 1
-                system_points += 1
-
-        if system_points > 0:
-            systèmes_domines[systeme] = system_points
-
-    embed = discord.Embed(
-        title=f"🏳️ {faction_nom} – Rapport stratégique",
-        color=discord.Color.blue() if faction_nom == "Défenseur"
-        else discord.Color.red() if faction_nom == "Envahisseur"
-        else discord.Color.dark_gold()
-    )
-
-    embed.add_field(name="🔢 Points totaux", value=f"**{total_points}**", inline=True)
-    embed.add_field(name="⚔️ Batailles livrées", value=f"**{total_batailles}**", inline=True)
-    embed.add_field(name="🏆 Planètes contrôlées", value=f"**{planètes_gagnées}**", inline=True)
-
-    if systèmes_domines:
-        desc = "\n".join([f"• {sys} ({pts} planètes gagnées)" for sys, pts in systèmes_domines.items()])
-    else:
-        desc = "Aucun système dominé actuellement."
-
-    embed.add_field(name="🌌 Influence par système", value=desc, inline=False)
-    embed.set_footer(text="Les chiffres sont mis à jour automatiquement après chaque bataille.")
-    await interaction.response.send_message(embed=embed)
-
-# ----------------- SYSTEMES -----------------
-@tree.command(name="liste_sys",
-              description="Afficher la liste des systèmes et leurs planètes",
-              guild=guild)
-async def liste_sys(interaction: discord.Interaction):
-  desc = ""
-  for systeme, planets in SYSTEMS.items():
-    desc += f"**{systeme}** : {', '.join(planets.keys())}\n"
-  await interaction.response.send_message(f"📜 Systèmes et planètes :\n{desc}")
-
 
 # ----------------- STATS SYSTEME -----------------
 @tree.command(
@@ -575,20 +545,23 @@ async def liste_sys(interaction: discord.Interaction):
 @app_commands.autocomplete(systeme=autocomplete_systeme)
 async def systeme(interaction: discord.Interaction, systeme: str):
     systeme = systeme.capitalize()
-    if systeme not in SYSTEMS:
-        await interaction.response.send_message(
-            f"❌ Système inconnu : {systeme}", ephemeral=True
-        )
+
+    # Recherche dans la hiérarchie
+    system_data = None
+    for secteur, sous_secteurs in SECTORS.items():
+        for sous_secteur, systemes in sous_secteurs.items():
+            if systeme in systemes:
+                system_data = systemes[systeme]
+                break
+        if system_data:
+            break
+
+    if system_data is None:
+        await interaction.response.send_message(f"❌ Système inconnu : {systeme}", ephemeral=True)
         return
 
     embed = discord.Embed(title=f"🪐 {systeme.upper()}", color=discord.Color.green())
-
-    ICONS = {
-        "Défenseur": "🛡️",
-        "Envahisseur": "⚔️",
-        "Pirate": "💀"
-    }
-
+    ICONS = {"Défenseur": "🛡️", "Envahisseur": "⚔️", "Pirate": "💀"}
     CASE_EMPTY = "▫️"
     CASE_PV = "🏅"
     CASE_BONUS = "🚩"
@@ -598,12 +571,11 @@ async def systeme(interaction: discord.Interaction, systeme: str):
     pv_thresholds = rules.get("pv_thresholds", [5])
     bonus_threshold = rules.get("bonus_threshold", 3)
     planet_values = rules.get("planets", {})
-
     max_points = max(pv_thresholds + [bonus_threshold])
 
     # --- Calcul de l'avancement ---
     total_pv = {f: 0 for f in ICONS.keys()}
-    for planet, data in SYSTEMS[systeme].items():
+    for planet, data in system_data.items():
         if planet not in planet_values:
             continue
         scores = {f: data[f]["points"] for f in ICONS.keys()}
@@ -615,7 +587,6 @@ async def systeme(interaction: discord.Interaction, systeme: str):
             gagnant = leaders[0]
             total_pv[gagnant] += planet_values[planet]
 
-    # --- Tableau d’avancement ---
     alignment_prefix = " " * len(f"{ICONS['Défenseur']} : ")
     line_avancement = alignment_prefix + CASE_EMPTY + SPACE
     for pos in range(1, max_points + 1):
@@ -633,27 +604,23 @@ async def systeme(interaction: discord.Interaction, systeme: str):
         pos_line[pos_index] = ICONS[f]
         faction_lines.append(SPACE.join(pos_line))
 
-    # --- Ajoute l’avancement juste après le nom du système ---
     avancement_block = "**Avancement :**\n" + line_avancement.strip() + "\n" + "\n".join(faction_lines)
     embed.add_field(name="", value=avancement_block, inline=False)
 
     # --- Détails des planètes ---
     lines = []
-    for planet, data in SYSTEMS[systeme].items():
+    for planet, data in system_data.items():
         lines.append(f"▪️ 🌏 **{planet}**")
         scores = {f: data[f]["points"] for f in ["Défenseur", "Envahisseur", "Pirate"]}
         max_score = max(scores.values())
         leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
-
         for f in ["Défenseur", "Envahisseur", "Pirate"]:
             v = data[f]
-            suffix = ""
-            if f in leaders:
-                suffix = " 🏆" if len(leaders) == 1 else " ⚖️"
+            suffix = " 🏆" if f in leaders and len(leaders) == 1 else " ⚖️" if f in leaders else ""
             lines.append(f"▪️  {ICONS[f]}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`")
-        lines.append("")  # ligne vide entre planètes
+        lines.append("")
 
-    # --- Découpage en chunks sûrs ---
+    # --- Découpage en chunks ---
     MAX_FIELD_LEN = 1000
     chunks = []
     current = ""
@@ -670,6 +637,7 @@ async def systeme(interaction: discord.Interaction, systeme: str):
 
     await interaction.response.send_message(embed=embed)
 
+
 # ----------------- STATS TOUT -----------------
 @tree.command(
     name="stats",
@@ -682,216 +650,266 @@ async def stats(interaction: discord.Interaction):
         color=discord.Color.green()
     )
 
-    ICONS = {
-        "Défenseur": "🛡️",
-        "Envahisseur": "⚔️",
-        "Pirate": "💀"
-    }
-
+    ICONS = {"Défenseur": "🛡️", "Envahisseur": "⚔️", "Pirate": "💀"}
     CASE_EMPTY = "▫️"
     CASE_PV = "🏅"
     CASE_BONUS = "🚩"
     SPACE = " "
-
-    systems_displayed = 0
     MAX_FIELD_LEN = 1000
     MAX_FIELDS = 25
+    systems_displayed = 0
 
-    active_systems = [s for s in SYSTEMS if ACTIVE_SYSTEMS.get(s, True)]
+    # Parcours hiérarchique secteurs → sous_secteurs → systèmes
+    for secteur, sous_secteurs in SECTORS.items():
+        for sous_secteur, systemes in sous_secteurs.items():
+            for systeme, system_data in systemes.items():
+                if not ACTIVE_SYSTEMS.get(secteur, {}).get(sous_secteur, {}).get(systeme, True):
+                    continue
 
-    for idx, systeme in enumerate(active_systems):
-        # --- Ajoute une ligne de séparation avant ce système sauf pour le premier ---
-        if idx > 0:
-            if len(embed.fields) < MAX_FIELDS:
-                embed.add_field(name="", value="――――――――――――――――――――――――", inline=False)
+                rules = SYSTEM_RULES.get(secteur, {}).get(sous_secteur, {}).get(systeme, {})
+                pv_thresholds = rules.get("pv_thresholds", [5])
+                bonus_threshold = rules.get("bonus_threshold", 3)
+                planet_values = rules.get("planets", {})
+                max_points = max(pv_thresholds + [bonus_threshold])
 
-        rules = SYSTEM_RULES.get(systeme, {})
-        pv_thresholds = rules.get("pv_thresholds", [5])
-        bonus_threshold = rules.get("bonus_threshold", 3)
-        planet_values = rules.get("planets", {})
-        max_points = max(pv_thresholds + [bonus_threshold])
+                # --- Avancement ---
+                total_pv = {f: 0 for f in ICONS.keys()}
+                for planet, data in system_data.items():
+                    if planet not in planet_values:
+                        continue
+                    scores = {f: data[f]["points"] for f in ICONS.keys()}
+                    max_score = max(scores.values())
+                    if max_score <= 0:
+                        continue
+                    leaders = [f for f, pts in scores.items() if pts == max_score]
+                    if len(leaders) == 1:
+                        total_pv[leaders[0]] += planet_values[planet]
 
-        # --- Calcul de l'avancement du système ---
-        total_pv = {f: 0 for f in ICONS.keys()}
-        for planet, data in SYSTEMS[systeme].items():
-            if planet not in planet_values:
-                continue
-            scores = {f: data[f]["points"] for f in ICONS.keys()}
-            max_score = max(scores.values())
-            if max_score <= 0:
-                continue
-            leaders = [f for f, pts in scores.items() if pts == max_score]
-            if len(leaders) == 1:
-                gagnant = leaders[0]
-                total_pv[gagnant] += planet_values[planet]
+                alignment_prefix = " " * len(f"{ICONS['Défenseur']} : ")
+                line_avancement = alignment_prefix + CASE_EMPTY + SPACE
+                for pos in range(1, max_points + 1):
+                    if pos in pv_thresholds:
+                        line_avancement += CASE_PV + SPACE
+                    elif pos == bonus_threshold:
+                        line_avancement += CASE_BONUS + SPACE
+                    else:
+                        line_avancement += CASE_EMPTY + SPACE
 
-        # --- Ligne principale d’avancement ---
-        alignment_prefix = " " * len(f"{ICONS['Défenseur']} : ")
-        line_avancement = alignment_prefix + CASE_EMPTY + SPACE
-        for pos in range(1, max_points + 1):
-            if pos in pv_thresholds:
-                line_avancement += CASE_PV + SPACE
-            elif pos == bonus_threshold:
-                line_avancement += CASE_BONUS + SPACE
-            else:
-                line_avancement += CASE_EMPTY + SPACE
+                faction_lines = []
+                for f, pts in total_pv.items():
+                    pos_line = [CASE_EMPTY] * (max_points + 1)
+                    pos_index = min(max(pts, 0), max_points)
+                    pos_line[pos_index] = ICONS[f]
+                    faction_lines.append(SPACE.join(pos_line))
 
-        # Lignes factions
-        faction_lines = []
-        for f, pts in total_pv.items():
-            pos_line = [CASE_EMPTY] * (max_points + 1)
-            pos_index = min(max(pts, 0), max_points)
-            pos_line[pos_index] = ICONS[f]
-            faction_lines.append(SPACE.join(pos_line))
+                avancement_block = "**Avancement :**\n" + line_avancement.strip() + "\n" + "\n".join(faction_lines)
 
-        # --- On ajoute le tableau d’avancement juste après le nom du système ---
-        avancement_block = "**Avancement :**\n" + line_avancement.strip() + "\n" + "\n".join(faction_lines)
-        field_name = f"🪐 {systeme.upper()}"
-        if len(embed.fields) < MAX_FIELDS:
-            embed.add_field(name=field_name, value=avancement_block, inline=False)
-            systems_displayed += 1
+                # --- Ajout embed ---
+                if len(embed.fields) < MAX_FIELDS:
+                    embed.add_field(name=f"🪐 {systeme.upper()}", value=avancement_block, inline=False)
+                    systems_displayed += 1
 
-        # --- Prépare les lignes pour les planètes ---
-        planet_lines = []
-        for planet, data in SYSTEMS[systeme].items():
-            planet_lines.append(f"▪️ 🌏 **{planet}**")
-            scores = {f: data[f]["points"] for f in data.keys()}
-            max_score = max(scores.values())
-            leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
+                # --- Lignes planètes ---
+                planet_lines = []
+                for planet, data in system_data.items():
+                    planet_lines.append(f"▪️ 🌏 **{planet}**")
+                    scores = {f: data[f]["points"] for f in data.keys()}
+                    max_score = max(scores.values())
+                    leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
 
-            for f in ["Défenseur", "Envahisseur", "Pirate"]:
-                v = data[f]
-                suffix = ""
-                if f in leaders:
-                    suffix = " 🏆" if len(leaders) == 1 else " ⚖️"
-                planet_lines.append(f"▪️  {ICONS[f]}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`")
-            planet_lines.append("")
+                    for f in ["Défenseur", "Envahisseur", "Pirate"]:
+                        v = data[f]
+                        suffix = " 🏆" if f in leaders and len(leaders) == 1 else " ⚖️" if f in leaders else ""
+                        planet_lines.append(f"▪️  {ICONS[f]}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`")
+                    planet_lines.append("")
 
-        # --- Découpe en chunks et ajout dans l'embed ---
-        chunks = []
-        current = ""
-        for ln in planet_lines:
-            if len(current) + len(ln) + 1 > MAX_FIELD_LEN:
-                chunks.append(current.rstrip("\n"))
+                # --- Découpage en chunks ---
+                chunks = []
                 current = ""
-            current += ln + "\n"
-        if current:
-            chunks.append(current.rstrip("\n"))
+                for ln in planet_lines:
+                    if len(current) + len(ln) + 1 > MAX_FIELD_LEN:
+                        chunks.append(current.rstrip("\n"))
+                        current = ""
+                    current += ln + "\n"
+                if current:
+                    chunks.append(current.rstrip("\n"))
 
-        for chunk in chunks:
-            if len(embed.fields) < MAX_FIELDS:
-                embed.add_field(name="", value=chunk, inline=False)
+                for chunk in chunks:
+                    if len(embed.fields) < MAX_FIELDS:
+                        embed.add_field(name="", value=chunk, inline=False)
 
     if systems_displayed == 0:
         embed.description = "❌ Aucun système actif pour cette phase."
 
     await interaction.response.send_message(embed=embed)
+
+
 # ----------------- MODIFIER STATS -----------------
 @tree.command(
     name="modif",
-    description=
-    "Modifier directement les points ou batailles d’une faction sur une planète",
-    guild=guild)
-@app_commands.describe(planete="Nom de la planète",
-                       faction="Faction à modifier",
-                       points="Points de victoire (optionnel, 0-20)",
-                       batailles="Nombre de batailles (optionnel, 0-20)")
-@app_commands.autocomplete(planete=autocomplete_planete,
-                           faction=autocomplete_faction,
-                           points=autocomplete_numbers,
-                           batailles=autocomplete_numbers)
-async def modif(interaction: discord.Interaction,
-                         planete: str,
-                         faction: str,
-                         points: Optional[int] = None,
-                         batailles: Optional[int] = None):
-  faction = faction.capitalize()
-  planet_info = find_planet(planete)
-  if planet_info is None:
-    await interaction.response.send_message(f"❌ Planète inconnue : {planete}",
-                                            ephemeral=True)
-    return
-
-  systeme_found, planete_found = planet_info
-  if faction not in FACTIONS:
-    await interaction.response.send_message(f"❌ Faction inconnue : {faction}",
-                                            ephemeral=True)
-    return
-
-  # Mise à jour des stats
-  if points is not None:
-    SYSTEMS[systeme_found][planete_found][faction]["points"] = points
-
-  if batailles is not None:
-    delta = batailles - SYSTEMS[systeme_found][planete_found][faction][
-        "batailles"]
-    SYSTEMS[systeme_found][planete_found][faction]["batailles"] = batailles
-    TOTAL_PARTIES[faction] += delta
-
-  await interaction.response.send_message(
-      f"✅ Stats modifiées pour **{faction}** sur **{planete_found}** ({systeme_found}) : points={points} batailles={batailles}"
-  )
-  save_data()
-
-
-# ----------------- AJOUTER SYSTEME -----------------
-@tree.command(
-    name="ajout_sys",
-    description="Ajouter un nouveau système avec au moins une planète",
-    guild=guild)
+    description="Modifier directement les points ou batailles d’une faction sur une planète",
+    guild=guild
+)
 @app_commands.describe(
-    systeme="Nom du système à créer",
-    premiere_planete="Nom de la première planète du système")
-async def ajout_sys(interaction: discord.Interaction, systeme: str,
-                          premiere_planete: str):
-  systeme = systeme.capitalize()
-  premiere_planete = premiere_planete.capitalize()
+    planete="Nom de la planète",
+    faction="Faction à modifier",
+    points="Points de victoire (optionnel, 0-20)",
+    batailles="Nombre de batailles (optionnel, 0-20)"
+)
+@app_commands.autocomplete(
+    planete=autocomplete_planete,
+    faction=autocomplete_faction,
+    points=autocomplete_numbers,
+    batailles=autocomplete_numbers
+)
+@admin_only()
+async def modif(interaction: discord.Interaction,
+                planete: str,
+                faction: str,
+                points: Optional[int] = None,
+                batailles: Optional[int] = None):
+    faction = faction.capitalize()
+    
+    # Recherche de la planète dans la hiérarchie
+    planet_info = None
+    for secteur, sous_secteurs in SECTORS.items():
+        for sous_secteur, systemes in sous_secteurs.items():
+            for systeme_name, planets in systemes.items():
+                if planete in planets:
+                    planet_info = (secteur, sous_secteur, systeme_name, planets[planete])
+                    break
+            if planet_info:
+                break
+        if planet_info:
+            break
 
-  if systeme in SYSTEMS:
+    if planet_info is None:
+        await interaction.response.send_message(f"❌ Planète inconnue : {planete}", ephemeral=True)
+        return
+
+    secteur_found, sous_secteur_found, systeme_found, planet_data = planet_info
+
+    if faction not in FACTIONS:
+        await interaction.response.send_message(f"❌ Faction inconnue : {faction}", ephemeral=True)
+        return
+
+    # Mise à jour des stats
+    if points is not None:
+        planet_data[faction]["points"] = points
+
+    if batailles is not None:
+        delta = batailles - planet_data[faction]["batailles"]
+        planet_data[faction]["batailles"] = batailles
+        TOTAL_PARTIES[faction] += delta
+
     await interaction.response.send_message(
-        f"❌ Le système **{systeme}** existe déjà !", ephemeral=True)
-    return
-
-  SYSTEMS[systeme] = {premiere_planete: create_planet_stats()}
-  await interaction.response.send_message(
-      f"✅ Nouveau système **{systeme}** créé avec la planète **{premiere_planete}** !"
-  )
-  save_data()
+        f"✅ Stats modifiées pour **{faction}** sur **{planete}** ({systeme_found}) : points={points} batailles={batailles}"
+    )
+    save_data()
 
 
-# ----------------- AJOUTER PLANETE -----------------
-@tree.command(name="ajout_plan",
-              description="Ajouter une planète à un système existant",
-              guild=guild)
-@app_commands.describe(systeme="Nom du système où ajouter la planète",
-                       planete="Nom de la nouvelle planète")
-@app_commands.autocomplete(systeme=autocomplete_systeme)
-async def ajout_plan(interaction: discord.Interaction, systeme: str,
-                          planete: str):
-  systeme = systeme.capitalize()
-  planete = planete.capitalize()
+# ----------------- AUTRES COMMANDES -----------------
+ICONS = {"Défenseur": "🛡️", "Envahisseur": "⚔️", "Pirate": "💀"}
 
-  if systeme not in SYSTEMS:
-    await interaction.response.send_message(
-        f"❌ Le système **{systeme}** n'existe pas !", ephemeral=True)
-    return
+@tree.command(
+    name="faction",
+    description="Afficher les statistiques de toutes les factions ou d'une faction précise",
+    guild=guild
+)
+@app_commands.describe(faction="Nom de la faction (Défenseur, Envahisseur, Pirate)")
+@app_commands.choices(faction=[
+    app_commands.Choice(name="Défenseur", value="Défenseur"),
+    app_commands.Choice(name="Envahisseur", value="Envahisseur"),
+    app_commands.Choice(name="Pirate", value="Pirate")
+])
+async def faction(interaction: discord.Interaction, faction: Optional[app_commands.Choice[str]] = None):
+    # Déterminer quelles factions afficher
+    factions_to_show = [faction.value] if faction else ["Défenseur", "Envahisseur", "Pirate"]
 
-  if planete in SYSTEMS[systeme]:
-    await interaction.response.send_message(
-        f"❌ La planète **{planete}** existe déjà dans le système {systeme} !",
-        ephemeral=True)
-    return
+    secteur_courant = CURRENT_PHASE.get("secteur", "Inconnu")
+    sous_secteur_courant = CURRENT_PHASE.get("sous_secteur", "Inconnu")
+    phase_courante = CURRENT_PHASE.get("phase", 1)
 
-  SYSTEMS[systeme][planete] = create_planet_stats()
-  await interaction.response.send_message(
-      f"✅ Planète **{planete}** ajoutée au système **{systeme}** !")
-  save_data()
+    # --- Embed principal ---
+    embed = discord.Embed(title="📊 Rapport stratégique", color=discord.Color.dark_blue())
+
+    # Champ unique pour secteur / sous-secteur / phase
+    embed.add_field(
+        name="",
+        value=(
+            f"    🌌 Secteur : {secteur_courant}\n"
+            f"    🗺️ Sous-secteur : {sous_secteur_courant}\n"
+            f"    🕹️ Phase actuelle : {phase_courante}"
+        ),
+        inline=False
+    )
+
+    for faction_nom in factions_to_show:
+        total_batailles = 0
+        batailles_cette_phase = 0
+        choix_planete = 0
+        planètes_gagnées = 0
+        systèmes_domines = {}
+
+        # --- Total batailles historique ---
+        for ss, phases in PHASES_HISTORY.items():
+            for phase_data in phases.values():
+                total_batailles += phase_data["total_parties"].get(faction_nom, 0)
+
+        # --- Batailles et choix en cours ---
+        if secteur_courant in SECTORS and sous_secteur_courant in SECTORS[secteur_courant]:
+            for systeme, planets in SECTORS[secteur_courant][sous_secteur_courant].items():
+                system_points = 0
+                for planete, data in planets.items():
+                    # Batailles cette phase
+                    batailles_cette_phase += data[faction_nom]["batailles"]
+                    total_batailles += data[faction_nom]["batailles"]
+
+                    # Choix de planète cette phase
+                    choix_planete += data[faction_nom]["choix"]
+
+                    # Vérification planète contrôlée
+                    max_points = max(fdata["points"] for fdata in data.values())
+                    leaders = [f for f, fdata in data.items() if fdata["points"] == max_points]
+                    if len(leaders) == 1 and leaders[0] == faction_nom:
+                        planètes_gagnées += 1
+                        system_points += 1
+
+                if system_points > 0:
+                    systèmes_domines[f"{systeme} ({sous_secteur_courant})"] = system_points
+
+        # --- Embed par faction ---
+        color = discord.Color.blue() if faction_nom == "Défenseur" else \
+                discord.Color.red() if faction_nom == "Envahisseur" else \
+                discord.Color.dark_gold()
+
+        value = (
+            f"    {ICONS[faction_nom]} **{faction_nom}**\n"
+            f"        💥 Total batailles : {total_batailles}\n"
+            f"        ⚡ Batailles cette phase : {batailles_cette_phase}\n"
+            f"        🎯  Choix de planète cette phase : {choix_planete}"
+        )
+
+        # Planètes contrôlées et influence par système seulement si faction spécifique
+        if faction:
+            value += f"\n        🏆 Planètes contrôlées : {planètes_gagnées}"
+            if systèmes_domines:
+                desc = "\n".join([f"        • {sys} ({pts} planètes gagnées)" for sys, pts in systèmes_domines.items()])
+            else:
+                desc = "        Aucun système dominé actuellement."
+            value += f"\n        🌌 Influence par système:\n{desc}"
+
+        embed.add_field(name="\u200b", value=value, inline=False)
+        embed.color = color  # Mettre la couleur de la faction si c'est une seule
+
+    await interaction.response.send_message(embed=embed)
 
 
-# -------- Commande tirage au sort d'honneur  --------
+
+# ----------------- TIRAGE AU SORT D'HONNEUR -----------------
 @tree.command(
     name="honneur",
-    description="Rechercher des posts contenant au moins un tag parmi les mots-clés donnés.",
+    description="Tirer un post d'honneur parmi les mots-clés donnés",
     guild=guild
 )
 @app_commands.describe(
@@ -910,18 +928,16 @@ async def ajout_plan(interaction: discord.Interaction, systeme: str,
     mot5=autocomplete_honneur,
     mot6=autocomplete_honneur
 )
-async def honneur(
-    interaction: discord.Interaction,
-    mot1: str,
-    mot2: Optional[str] = None,
-    mot3: Optional[str] = None,
-    mot4: Optional[str] = None,
-    mot5: Optional[str] = None,
-    mot6: Optional[str] = None
-):
+async def honneur(interaction: discord.Interaction,
+                  mot1: str,
+                  mot2: Optional[str] = None,
+                  mot3: Optional[str] = None,
+                  mot4: Optional[str] = None,
+                  mot5: Optional[str] = None,
+                  mot6: Optional[str] = None):
     await interaction.response.defer(thinking=True, ephemeral=False)
 
-    keywords = [m.lower() for m in [mot1, mot2, mot3, mot4, mot5, mot6] if m]
+    keywords = [kw.lower() for kw in [mot1, mot2, mot3, mot4, mot5, mot6] if kw]
     matched_threads = []
 
     for forum_id in FORUM_IDS:
@@ -929,62 +945,48 @@ async def honneur(
         if not forum:
             print(f"⚠️ Forum introuvable : {forum_id}")
             continue
-
         try:
             active_threads = list(forum.threads)
-
-            archived_threads = []
-            async for t in forum.archived_threads(limit=None):
-                archived_threads.append(t)
-
+            archived_threads = [t async for t in forum.archived_threads(limit=None)]
             threads = active_threads + archived_threads
-
             for thread in threads:
                 if not thread.applied_tags:
                     continue
-
                 tag_names = [tag.name.lower() for tag in thread.applied_tags]
                 if any(k in tag_names for k in keywords):
                     matched_threads.append(thread)
-
         except Exception as e:
-            print(f"⚠️ Erreur lors de la lecture du forum {forum_id}: {e}")
+            print(f"⚠️ Erreur lors de la lecture du forum {forum_id} : {e}")
 
-    # Vérifie le nombre de threads trouvés
     if len(matched_threads) < 3:
         await interaction.followup.send(
-            "⚠️ Moins de 3 honneurs trouvés, veuillez vérifier les tableaux d'honneur ou bien contacter un admin."
+            "⚠️ Moins de 3 honneurs trouvés. Vérifiez les tableaux d'honneur ou contactez un admin."
         )
         return
 
-    # Tire un thread au hasard
     chosen_thread = random.choice(matched_threads)
     thread_url = f"https://discord.com/channels/{interaction.guild_id}/{chosen_thread.id}"
 
-    # Crée l’embed de résultat
     embed = discord.Embed(
-        title=f"🎖️ Honneur sélectionné au hasard parmi {len(matched_threads)} résultats",
+        title=f"🎖️ Honneur tiré au hasard parmi {len(matched_threads)} résultats",
         color=discord.Color.gold()
     )
     embed.add_field(name="Nom du post", value=chosen_thread.name, inline=False)
     embed.add_field(name="Lien", value=f"[Ouvrir le post]({thread_url})", inline=False)
-
-    # Affiche les tags du thread s’ils existent
     if chosen_thread.applied_tags:
-        tags_str = ", ".join(tag.name for tag in chosen_thread.applied_tags)
-        embed.add_field(name="Tags", value=tags_str, inline=False)
+        embed.add_field(name="Tags", value=", ".join(tag.name for tag in chosen_thread.applied_tags), inline=False)
 
     await interaction.followup.send(embed=embed)
 
-# ----------------- maj honneur tags -----------------
+
+# ----------------- MISE À JOUR DES TAGS D’HONNEUR -----------------
 @tree.command(
     name="maj_honneurs",
-    description="Met à jour la liste HonneurKeyWords dans data.json à partir des tags présents dans les forums.",
+    description="Met à jour la liste des mots-clés d'honneur depuis les tags des forums",
     guild=guild
 )
 async def maj_honneurs(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
-
     all_tags = set()
 
     for forum_id in FORUM_IDS:
@@ -992,7 +994,6 @@ async def maj_honneurs(interaction: discord.Interaction):
         if not forum:
             print(f"⚠️ Forum introuvable : {forum_id}")
             continue
-
         try:
             for tag in forum.available_tags:
                 all_tags.add(tag.name)
@@ -1011,6 +1012,26 @@ async def maj_honneurs(interaction: discord.Interaction):
         f"✅ Liste des Honneurs mise à jour avec {len(HonneurKeyWords)} tags :\n"
         f"```{', '.join(HonneurKeyWords)}```"
     )
+
+
+# ----------------- LISTE DES SYSTÈMES ET PLANÈTES -----------------
+@tree.command(name="liste_sys", description="Afficher la liste des systèmes actifs et leurs planètes", guild=guild)
+async def liste_sys(interaction: discord.Interaction):
+    desc = ""
+    # Parcours hiérarchique : secteur -> sous-secteur -> système -> planètes
+    for secteur, sous_secteurs in SECTORS.items():
+        for sous_secteur, systemes in sous_secteurs.items():
+            for systeme, planets in systemes.items():
+                # Vérifie si le système est actif
+                if not ACTIVE_SYSTEMS.get(secteur, {}).get(sous_secteur, {}).get(systeme, True):
+                    continue
+                desc += f"**{systeme} ({sous_secteur}, {secteur})** : {', '.join(planets.keys())}\n"
+
+    if not desc:
+        await interaction.response.send_message("❌ Aucun système actif pour cette phase.")
+        return
+
+    await interaction.response.send_message(f"📜 Systèmes actifs et planètes :\n{desc}")
 
 # ----------------- HELP -----------------
 @tree.command(name="h",
@@ -1052,8 +1073,6 @@ async def h(interaction: discord.Interaction):
         name="🛠️ Gestion et modifications",
         value=(
             "• **/modif** — Modifier manuellement les points ou batailles d’une faction.\n"
-            "• **/ajout_sys** — Créer un nouveau système avec une planète initiale.\n"
-            "• **/ajout_plan** — Ajouter une planète dans un système existant.\n"
             "• **/liste_sys** — Liste tous les systèmes et leurs planètes."
         ),
         inline=False
