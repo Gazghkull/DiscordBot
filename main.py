@@ -80,8 +80,8 @@ PHASES_HISTORY = {}
 DATA_FILE = "data.json"
 
 # ----------------- HONNEUR FORUM IDS -----------------
-# FORUM_IDS = [1424007352348049598, 1424806344417873960] #Dev
-FORUM_IDS = [1420741205880471562, 1424671536077340682]
+FORUM_IDS = [1424007352348049598, 1424806344417873960] #Dev
+#FORUM_IDS = [1420741205880471562, 1424671536077340682]
 HonneurKeyWords = []
 
 ACTIVE_SYSTEMS = {}  # sera chargé depuis le JSON
@@ -123,8 +123,8 @@ def save_data():
         print(f"❌ Erreur lors de la sauvegarde des données : {e}")
 
 # ----------------- CONFIG -----------------
-#GUILD_ID = 1384163146050048092 # Dev
-GUILD_ID = 1420665554225729588
+GUILD_ID = 1384163146050048092 # Dev
+#GUILD_ID = 1420665554225729588
 guild = discord.Object(id=GUILD_ID)
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -548,57 +548,66 @@ async def planete(interaction: discord.Interaction, planete: str):
 async def systeme(interaction: discord.Interaction, systeme: str):
     systeme = systeme.capitalize()
 
-    # Recherche dans la hiérarchie
+    # Recherche du système
     system_data = None
+    secteur_courant = None
+    sous_secteur_courant = None
     for secteur, sous_secteurs in SECTORS.items():
         for sous_secteur, systemes in sous_secteurs.items():
             if systeme in systemes:
                 system_data = systemes[systeme]
+                secteur_courant = secteur
+                sous_secteur_courant = sous_secteur
                 break
         if system_data:
             break
 
-    if system_data is None:
+    if not system_data:
         await interaction.response.send_message(f"❌ Système inconnu : {systeme}", ephemeral=True)
         return
 
     embed = discord.Embed(title=f"🪐 {systeme.upper()}", color=discord.Color.green())
+
     ICONS = {"Défenseur": "🛡️", "Envahisseur": "⚔️", "Pirate": "💀"}
     CASE_EMPTY = "▫️"
     CASE_PV = "🏅"
     CASE_BONUS = "🚩"
     SPACE = " "
 
+    # Règles du système
     rules = SYSTEM_RULES.get(systeme, {})
+    if not rules:
+        rules = SYSTEM_RULES.get(secteur_courant, {}).get(sous_secteur_courant, {}).get(systeme, {})
     pv_thresholds = rules.get("pv_thresholds", [5])
     bonus_threshold = rules.get("bonus_threshold", 3)
     planet_values = rules.get("planets", {})
     max_points = max(pv_thresholds + [bonus_threshold])
 
-    # --- Calcul de l'avancement ---
+    # --- Calcul de l'avancement par contrôle de planète ---
     total_pv = {f: 0 for f in ICONS.keys()}
     for planet, data in system_data.items():
         if planet not in planet_values:
             continue
         scores = {f: data[f]["points"] for f in ICONS.keys()}
         max_score = max(scores.values())
-        if max_score <= 0:
-            continue
         leaders = [f for f, pts in scores.items() if pts == max_score]
+        # Une planète est contrôlée seulement si un leader absolu
         if len(leaders) == 1:
-            gagnant = leaders[0]
-            total_pv[gagnant] += planet_values[planet]
+            faction = leaders[0]
+            total_pv[faction] += planet_values[planet]
 
+    # Construction ligne des seuils
     alignment_prefix = " " * len(f"{ICONS['Défenseur']} : ")
-    line_avancement = alignment_prefix + CASE_EMPTY + SPACE
+    line_thresholds = alignment_prefix + CASE_EMPTY + SPACE
     for pos in range(1, max_points + 1):
         if pos in pv_thresholds:
-            line_avancement += CASE_PV + SPACE
+            line_thresholds += CASE_PV + SPACE
         elif pos == bonus_threshold:
-            line_avancement += CASE_BONUS + SPACE
+            line_thresholds += CASE_BONUS + SPACE
         else:
-            line_avancement += CASE_EMPTY + SPACE
+            line_thresholds += CASE_EMPTY + SPACE
 
+    # Construction ligne des factions
     faction_lines = []
     for f, pts in total_pv.items():
         pos_line = [CASE_EMPTY] * (max_points + 1)
@@ -606,23 +615,23 @@ async def systeme(interaction: discord.Interaction, systeme: str):
         pos_line[pos_index] = ICONS[f]
         faction_lines.append(SPACE.join(pos_line))
 
-    avancement_block = "**Avancement :**\n" + line_avancement.strip() + "\n" + "\n".join(faction_lines)
+    avancement_block = "**Avancement :**\n" + line_thresholds.strip() + "\n" + "\n".join(faction_lines)
     embed.add_field(name="", value=avancement_block, inline=False)
 
     # --- Détails des planètes ---
     lines = []
     for planet, data in system_data.items():
         lines.append(f"▪️ 🌏 **{planet}**")
-        scores = {f: data[f]["points"] for f in ["Défenseur", "Envahisseur", "Pirate"]}
+        scores = {f: data[f]["points"] for f in ICONS.keys()}
         max_score = max(scores.values())
         leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
-        for f in ["Défenseur", "Envahisseur", "Pirate"]:
+        for f in ICONS.keys():
             v = data[f]
             suffix = " 🏆" if f in leaders and len(leaders) == 1 else " ⚖️" if f in leaders else ""
             lines.append(f"▪️  {ICONS[f]}{suffix} {f} : **{v['points']} pts** | `{v['batailles']} batailles`")
         lines.append("")
 
-    # --- Découpage en chunks ---
+    # Découpage en chunks
     MAX_FIELD_LEN = 1000
     chunks = []
     current = ""
