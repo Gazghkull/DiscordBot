@@ -2,174 +2,536 @@
     "systems": {
         "Memlock": {
             "Iliar II": {
-                "Défenseur": { "points": 3, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 2, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 3, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 3,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 2,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 3,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Memlock": {
-                "Défenseur": { "points": 8, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 11, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 1, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 8,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 11,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 1,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Udesore": {
-                "Défenseur": { "points": 6, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 2, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 6,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 2,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Station Ivius": {
-                "Défenseur": { "points": 6, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 1, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 1, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 6,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 1,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 1,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Telock": {
-                "Défenseur": { "points": 3, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 9, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 3,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 9,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             }
         },
         "Hovot": {
             "Maben": {
-                "Défenseur": { "points": 4, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 7, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 1, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 4,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 7,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 1,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Vivim": {
-                "Défenseur": { "points": 4, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 4, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 4,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 4,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Station d'ancrage des Navigateurs de l'Obscure": {
-                "Défenseur": { "points": 10, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 2, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 4, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 10,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 2,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 4,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Hebda": {
-                "Défenseur": { "points": 2, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 5, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 1, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 2,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 5,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 1,
+                    "batailles": 0,
+                    "choix": 0
+                }
             }
         },
         "Acraelon": {
             "Meggdal": {
-                "Défenseur": { "points": 4, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 3, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 9, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 4,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 3,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 9,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Sumemnal": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Station Bénédiction du champ Gleecer": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Arrabal": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 1, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 3, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 1,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 3,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Maeron": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             }
         },
         "Umnal": {
             "Takfor": {
-                "Défenseur": { "points": 6, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 3, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 3, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 6,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 3,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 3,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Umnal Silva": {
-                "Défenseur": { "points": 1, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 5, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 6, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 1,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 5,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 6,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Umnalis": {
-                "Défenseur": { "points": 6, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 2, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 6,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 2,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             }
         },
         "Makravor": {
             "Atar Oblitus": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Atar Secundus": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Atar Prime": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Twi’tai": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Makravor": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Vint": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             }
         },
         "Arar": {
             "Arar I": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             },
             "Berlag": {
-                "Défenseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Envahisseur": { "points": 0, "batailles": 0, "choix": 0 },
-                "Pirate": { "points": 0, "batailles": 0, "choix": 0 }
+                "Défenseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Envahisseur": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                },
+                "Pirate": {
+                    "points": 0,
+                    "batailles": 0,
+                    "choix": 0
+                }
             }
         }
     },
-    "current_phase": 3,
+    "system_rules": {
+        "Memlock": {
+            "pv_thresholds": [
+                2,
+                5
+            ],
+            "bonus_threshold": 3,
+            "planets": {
+                "Iliar II": 1,
+                "Memlock": 2,
+                "Udesore": 1,
+                "Station Ivius": 1,
+                "Telock": 2
+            }
+        },
+        "Hovot": {
+            "pv_thresholds": [
+                2,
+                5
+            ],
+            "bonus_threshold": 3,
+            "planets": {
+                "Maben": 1,
+                "Vivim": 1,
+                "Station d'ancrage des Navigateurs de l'Obscure": 2,
+                "Hebda": 1
+            }
+        },
+        "Acraelon": {
+            "pv_thresholds": [
+                2,
+                5
+            ],
+            "bonus_threshold": 3,
+            "planets": {
+                "Meggdal": 2,
+                "Sumemnal": 1,
+                "Station Bénédiction du champ Gleecer": 2,
+                "Arrabal": 2,
+                "Maeron": 1
+            }
+        },
+        "Umnal": {
+            "pv_thresholds": [
+                2
+            ],
+            "bonus_threshold": 3,
+            "planets": {
+                "Takfor": 2,
+                "Umnal Silva": 1,
+                "Umnalis": 1
+            }
+        },
+        "Makravor": {
+            "pv_thresholds": [
+                3,
+                6
+            ],
+            "bonus_threshold": 4,
+            "planets": {
+                "Atar Oblitus": 1,
+                "Atar Secundus": 2,
+                "Atar Prime": 1,
+                "Twi’tai": 2,
+                "Makravor": 2,
+                "Vint": 1
+            }
+        },
+        "Arar": {
+            "pv_thresholds": [
+                2
+            ],
+            "bonus_threshold": 3,
+            "planets": {
+                "Arar I": 1,
+                "Berlag": 2
+            }
+        }
+    },
+    "active_systems": 
+    {
+        "Memlock": true,
+        "Hovot": false,
+        "Acraelon": true,
+        "Umnal": true,
+        "Makravor": true,
+        "Arar": true
+    },
+    "current_phase": 1,
     "total_parties": {
         "Envahisseur": 0,
         "Défenseur": 0,
         "Pirate": 0
     },
-    "phases_history": {
-        "1": {
-            "total_parties": {
-                "Envahisseur": 0,
-                "Défenseur": 0,
-                "Pirate": 0
-            },
-            "choix_planete": {
-                "Envahisseur": 1,
-                "Défenseur": 0,
-                "Pirate": 0
-            }
-        },
-        "2": {
-            "total_parties": {
-                "Envahisseur": 40,
-                "Défenseur": 32,
-                "Pirate": 20
-            },
-            "choix_planete": {
-                "Envahisseur": 0,
-                "Défenseur": 0,
-                "Pirate": 0
-            }
-        }
-    },
-    "HonneurKeyWords": [
-    ]
+    "phases_history": {},
+    "HonneurKeyWords": []
 }
