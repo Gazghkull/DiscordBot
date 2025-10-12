@@ -928,18 +928,26 @@ async def faction(interaction: discord.Interaction, faction: Optional[app_comman
     mot5=autocomplete_honneur,
     mot6=autocomplete_honneur
 )
-async def honneur(interaction: discord.Interaction,
-                  mot1: str,
-                  mot2: Optional[str] = None,
-                  mot3: Optional[str] = None,
-                  mot4: Optional[str] = None,
-                  mot5: Optional[str] = None,
-                  mot6: Optional[str] = None):
+async def honneur(
+    interaction: discord.Interaction,
+    mot1: str,
+    mot2: Optional[str] = None,
+    mot3: Optional[str] = None,
+    mot4: Optional[str] = None,
+    mot5: Optional[str] = None,
+    mot6: Optional[str] = None
+):
     await interaction.response.defer(thinking=True, ephemeral=False)
 
+    # --- Préparer la liste des mots-clés ---
     keywords = [kw.lower() for kw in [mot1, mot2, mot3, mot4, mot5, mot6] if kw]
+    if not keywords:
+        await interaction.followup.send("⚠️ Vous devez fournir au moins un mot-clé.")
+        return
+
     matched_threads = []
 
+    # --- Parcours des forums ---
     for forum_id in FORUM_IDS:
         forum = bot.get_channel(forum_id)
         if not forum:
@@ -949,24 +957,33 @@ async def honneur(interaction: discord.Interaction,
             active_threads = list(forum.threads)
             archived_threads = [t async for t in forum.archived_threads(limit=None)]
             threads = active_threads + archived_threads
+
             for thread in threads:
                 if not thread.applied_tags:
                     continue
-                tag_names = [tag.name.lower() for tag in thread.applied_tags]
-                if any(k in tag_names for k in keywords):
+                thread_tags = set(tag.name.lower() for tag in thread.applied_tags)
+
+                # Vérification stricte selon la règle :
+                # - tous les tags du thread doivent être dans les keywords fournis
+                # - au moins un tag du thread doit correspondre à un keyword
+                if thread_tags and thread_tags.issubset(set(keywords)) and thread_tags.intersection(keywords):
                     matched_threads.append(thread)
+
         except Exception as e:
             print(f"⚠️ Erreur lors de la lecture du forum {forum_id} : {e}")
 
+    # --- Vérification nombre minimal de résultats ---
     if len(matched_threads) < 3:
         await interaction.followup.send(
             "⚠️ Moins de 3 honneurs trouvés. Vérifiez les tableaux d'honneur ou contactez un admin."
         )
         return
 
+    # --- Tirage aléatoire ---
     chosen_thread = random.choice(matched_threads)
     thread_url = f"https://discord.com/channels/{interaction.guild_id}/{chosen_thread.id}"
 
+    # --- Création de l'embed ---
     embed = discord.Embed(
         title=f"🎖️ Honneur tiré au hasard parmi {len(matched_threads)} résultats",
         color=discord.Color.gold()
