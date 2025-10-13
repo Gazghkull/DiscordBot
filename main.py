@@ -79,6 +79,11 @@ TOTAL_PARTIES = {f: 0 for f in FACTIONS}
 PHASES_HISTORY = {}
 DATA_FILE = "data.json"
 
+PLANET_VALUE_ICONS = {
+    1: "⭐",
+    2: "⭐⭐"
+}
+
 # ----------------- HONNEUR FORUM IDS -----------------
 #FORUM_IDS = [1424007352348049598, 1424806344417873960] #Dev
 FORUM_IDS = [1420741205880471562, 1424671536077340682]
@@ -621,7 +626,8 @@ async def systeme(interaction: discord.Interaction, systeme: str):
     # --- Détails des planètes ---
     lines = []
     for planet, data in system_data.items():
-        lines.append(f"▪️ 🌏 **{planet}**")
+        value_icon = PLANET_VALUE_ICONS.get(planet_values.get(planet, 0), "")
+        lines.append(f"▪️ 🌏 **{planet}** {value_icon}")
         scores = {f: data[f]["points"] for f in ICONS.keys()}
         max_score = max(scores.values())
         leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
@@ -723,7 +729,8 @@ async def stats(interaction: discord.Interaction):
                 # --- Lignes planètes ---
                 planet_lines = []
                 for planet, data in system_data.items():
-                    planet_lines.append(f"▪️ 🌏 **{planet}**")
+                    value_icon = PLANET_VALUE_ICONS.get(planet_values.get(planet, 0), "")
+                    planet_lines.append(f"▪️ 🌏 **{planet}** {value_icon}")
                     scores = {f: data[f]["points"] for f in data.keys()}
                     max_score = max(scores.values())
                     leaders = [f for f, pts in scores.items() if pts == max_score and pts > 0]
@@ -996,7 +1003,7 @@ async def honneur(
 
     # --- Création de l'embed ---
     embed = discord.Embed(
-        title=f"🎖️ Honneur tiré au hasard parmi {len(matched_threads)} résultats",
+        title=f"🎖️ Honneur tiré au hasard parmi {len(matched_threads)} traits",
         color=discord.Color.gold()
     )
     embed.add_field(name="Nom du post", value=chosen_thread.name, inline=False)

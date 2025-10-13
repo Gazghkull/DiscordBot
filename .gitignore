@@ -19,6 +19,7 @@ env/
 # Data / secrets
 *.sqlite
 secrets.json
+data.json
 
 # System
 .DS_Store
