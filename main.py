@@ -86,7 +86,7 @@ PLANET_VALUE_ICONS = {
 
 # ----------------- HONNEUR FORUM IDS -----------------
 #FORUM_IDS = [1424007352348049598, 1424806344417873960] #Dev
-FORUM_IDS = [1420741205880471562, 1424671536077340682]
+#FORUM_IDS = [1420741205880471562, 1424671536077340682]
 HonneurKeyWords = []
 
 ACTIVE_SYSTEMS = {}  # sera chargé depuis le JSON
@@ -129,7 +129,11 @@ def save_data():
 
 # ----------------- CONFIG -----------------
 #GUILD_ID = 1384163146050048092 # Dev
-GUILD_ID = 1420665554225729588
+#GUILD_ID = 1420665554225729588
+# Lecture des IDs depuis .env
+GUILD_ID = int(os.getenv("GUILD_ID"))
+FORUM_IDS = [int(fid.strip()) for fid in os.getenv("FORUM_IDS", "").split(",") if fid.strip()]
+
 guild = discord.Object(id=GUILD_ID)
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
