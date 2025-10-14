@@ -1128,43 +1128,6 @@ async def liste_sys(
 
     await interaction.response.send_message(message)
 
-# ----------------- Activer/Désactiver Systèmes -----------------
-@tree.command(
-    name="toggle_sys",
-    description="Activer ou désactiver un système",
-    guild=guild
-)
-@app_commands.describe(
-    systeme="Nom du système à activer/désactiver",
-    etat="True pour activer, False pour désactiver (laisser vide pour inverser)"
-)
-async def toggle_sys(
-    interaction: discord.Interaction,
-    systeme: str,
-    etat: Optional[bool] = None):
-
-    # Secteur actif
-    secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
-
-    # Rechercher le système dans les sous-secteurs
-    systeme_trouve = False
-    for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
-        if systeme in systemes:
-            systeme_trouve = True
-            # Si l'état n'est pas donné, on fait un toggle
-            if etat is None:
-                ACTIVE_SYSTEMS[secteur_nom][ss][systeme] = not systemes[systeme]
-            else:
-                ACTIVE_SYSTEMS[secteur_nom][ss][systeme] = etat
-
-            etat_final = ACTIVE_SYSTEMS[secteur_nom][ss][systeme]
-            message = f"🪐 **{systeme}** a été {'activé 🟢' if etat_final else 'désactivé 🔴'} dans le sous-secteur **{ss}**."
-            await interaction.response.send_message(message)
-            return
-
-    if not systeme_trouve:
-        await interaction.response.send_message(f"❌ Le système **{systeme}** n'a pas été trouvé dans le secteur {secteur_nom}.")
-
 # --- Commande activer ---
 @tree.command(
     name="activer_sys",
@@ -1175,6 +1138,7 @@ async def toggle_sys(
     systeme="Nom du système à activer"
 )
 @app_commands.autocomplete(systeme=completer_activer)
+@admin_only()
 async def activer_sys(interaction: discord.Interaction, systeme: str):
     secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
     for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
@@ -1197,6 +1161,7 @@ async def activer_sys(interaction: discord.Interaction, systeme: str):
     systeme="Nom du système à désactiver"
 )
 @app_commands.autocomplete(systeme=completer_desactiver)
+@admin_only()
 async def desactiver_sys(interaction: discord.Interaction, systeme: str):
     secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
     for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
@@ -1208,7 +1173,7 @@ async def desactiver_sys(interaction: discord.Interaction, systeme: str):
                 await interaction.response.send_message(f"🔴 Le système **{systeme}** a été désactivé dans le sous-secteur **{ss}**.")
             return
     await interaction.response.send_message(f"❌ Le système **{systeme}** n'a pas été trouvé dans le secteur {secteur_nom}.")
-    
+
 # ----------------- HELP -----------------
 @tree.command(name="h",
               description="Afficher la liste complète des commandes disponibles",
@@ -1224,10 +1189,10 @@ async def h(interaction: discord.Interaction):
     embed.add_field(
         name="⚔️ Gestion des batailles",
         value=(
-            "• **/ajout** — Ajouter une partie ou bataille.\n"
-            "• **/cloture** — Clôturer la phase en cours et passer à la suivante.\n"
-            "• **/phase** — Afficher la phase en cours.\n"
-            "• **/phase_stats** — Voir les statistiques d’une phase précédente."
+            "🟣 **`/ajout`** — Ajouter une partie ou bataille.\n"
+            "🟣 **`/cloture`** — Clôturer la phase en cours et passer à la suivante.\n"
+            "🟢 **`/phase`** — Afficher la phase en cours.\n"
+            "🟢 **`/phase_stats`** — Voir les statistiques d’une phase précédente."
         ),
         inline=False
     )
@@ -1236,20 +1201,22 @@ async def h(interaction: discord.Interaction):
     embed.add_field(
         name="📊 Statistiques",
         value=(
-            "• **/planete** — Afficher les stats détaillées d’une planète.\n"
-            "• **/systeme** — Afficher les stats de toutes les planètes d’un système.\n"
-            "• **/stats** — Afficher les stats de toutes les planètes de tous les systèmes.\n"
-            "• **/factions** — Voir les totaux des batailles et choix de planète par faction."
+            "🟢 **`/planete`** — Afficher les stats détaillées d’une planète.\n"
+            "🟢 **`/systeme`** — Afficher les stats de toutes les planètes d’un système.\n"
+            "🟢 **`/stats`** — Afficher les stats de toutes les planètes de tous les systèmes.\n"
+            "🟢 **`/factions`** — Voir les totaux des batailles et choix de planète par faction."
         ),
         inline=False
     )
 
-    # --- Gestion manuelle ---
+    # --- Gestion manuelle et systèmes ---
     embed.add_field(
         name="🛠️ Gestion et modifications",
         value=(
-            "• **/modif** — Modifier manuellement les points ou batailles d’une faction.\n"
-            "• **/liste_sys** — Liste tous les systèmes et leurs planètes."
+            "🟣 **`/modif`** — Modifier manuellement les points ou batailles d’une faction.\n"
+            "🟢 **`/liste_sys`** — Liste tous les systèmes et leurs planètes.\n"
+            "🟣 **`/activer_sys`** — Activer un système\n"
+            "🟣 **`/desactiver_sys`** — Désactiver un système"
         ),
         inline=False
     )
@@ -1258,21 +1225,22 @@ async def h(interaction: discord.Interaction):
     embed.add_field(
         name="🏅 Tableau d'Honneur",
         value=(
-            "• **/honneur** — Tire au hasard un post d'honneur parmi les mots-clés donnés.\n"
-            "• **/maj_honneurs** — Met à jour la liste des mots-clés d’honneur à partir des tags des forums."
+            "🟢 **`/honneur`** — Tire au hasard un post d'honneur parmi les mots-clés donnés.\n"
+            "🟢 **`/maj_honneurs`** — Met à jour la liste des mots-clés d’honneur à partir des tags des forums."
         ),
         inline=False
     )
 
-    # --- Aide ---
+    # --- Divers ---
     embed.add_field(
         name="ℹ️ Divers",
-        value="• **/h** — Afficher cette liste de commandes.",
+        value="🟢 **`/h`** — Afficher cette liste de commandes.",
         inline=False
     )
 
+    # Footer avec lexique de couleurs
     embed.set_footer(
-        text="Bot développé pour la campagne galactique ⚙️",
+        text="🟢 Vert = commandes actives pour tout le monde.\n🟣 Violet = commandes réservées aux admins",
         icon_url="https://cdn-icons-png.flaticon.com/512/4712/4712109.png"
     )
 
