@@ -10,6 +10,7 @@ import time
 import random
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import asyncio
 
 load_dotenv()
 
@@ -1070,6 +1071,180 @@ async def maj_honneurs(interaction: discord.Interaction):
     )
 
 
+
+
+# ----------------- Transfert thread -----------------
+@tree.command(
+    name="transfer_threads",
+    description="Transférer tous les threads d'un ou plusieurs tags vers un nouveau forum",
+    guild=guild
+)
+@app_commands.describe(
+    tags="Liste des tags à filtrer, séparés par des virgules",
+    target_forum="ID du forum de destination"
+)
+@admin_only()
+async def transfer_threads(interaction: discord.Interaction, tags: str, target_forum: str):
+    await interaction.response.send_message("Préparation du transfert en cours… ⏳", ephemeral=True)
+
+    tags_list = [t.strip() for t in tags.split(",") if t.strip()]
+    tags_lower = [t.lower() for t in tags_list]
+
+    if len(tags_list) > 20:
+        await interaction.followup.send("❌ Impossible : plus de 20 tags spécifiés.", ephemeral=True)
+        return
+
+    # Vérifier forum cible
+    try:
+        target_forum = await interaction.client.fetch_channel(int(target_forum))
+        if not isinstance(target_forum, discord.ForumChannel):
+            raise ValueError
+    except Exception:
+        await interaction.followup.send("❌ Forum de destination invalide.", ephemeral=True)
+        return
+
+    # Déterminer le forum source
+    thread = interaction.channel
+    source_forum = thread.parent if isinstance(thread, discord.Thread) else thread
+    if not isinstance(source_forum, discord.ForumChannel):
+        await interaction.followup.send(
+            "❌ Cette commande doit être exécutée dans un forum ou un thread d’un forum.",
+            ephemeral=True
+        )
+        return
+
+    # --- ÉTAPE 1 : Stabilisation des tags du forum source (option 2) ---
+    print("🔍 Vérification de la propagation des tags du forum source…")
+    for _ in range(3):
+        source_forum = await interaction.client.fetch_channel(source_forum.id)
+        available_source_tags = {tag.name.lower(): tag for tag in source_forum.available_tags}
+        unknown_tags = [t for t in tags_lower if t not in available_source_tags]
+        if not unknown_tags:
+            break
+        print(f"⚠️ Tags non propagés détectés : {unknown_tags}. Nouvelle tentative dans 1s…")
+        await asyncio.sleep(1)
+
+    # --- ÉTAPE 2 : Sélection des threads à transférer ---
+    all_threads = [
+        t for t in source_forum.threads
+        if any(tag.name.lower() in tags_lower for tag in t.applied_tags)
+    ]
+    if not all_threads:
+        await interaction.followup.send("❌ Aucun thread ne correspond aux tags donnés.", ephemeral=True)
+        return
+
+    # --- ÉTAPE 3 : Collecte de tous les tags utilisés ---
+    all_used_tags = {}
+    for thread in all_threads:
+        for tag in thread.applied_tags:
+            lower = tag.name.lower()
+            if lower not in all_used_tags:
+                all_used_tags[lower] = tag.name  # conserve la casse d’origine
+    for tag in tags_list:
+        lower = tag.lower()
+        if lower not in all_used_tags:
+            all_used_tags[lower] = tag
+
+    # --- ÉTAPE 4 : Création des tags manquants sur le forum cible ---
+    existing_tags = {tag.name.lower(): tag for tag in target_forum.available_tags}
+    missing_tags = [lower for lower in all_used_tags if lower not in existing_tags]
+
+    if len(existing_tags) + len(missing_tags) > 20:
+        await interaction.followup.send(
+            f"❌ Trop de tags à créer ({len(existing_tags)} existants + {len(missing_tags)} nouveaux). "
+            "Discord limite à 20 tags par forum.",
+            ephemeral=True
+        )
+        return
+
+    for lower_name in missing_tags:
+        display_name = all_used_tags[lower_name]
+        try:
+            await target_forum.create_tag(name=display_name, moderated=False)
+            print(f"✅ Tag créé : {display_name}")
+            # ⏳ Attente courte pour éviter les pertes de tags
+            await asyncio.sleep(1)
+            # 🔁 Refetch pour s’assurer que le tag est bien enregistré avant le suivant
+            target_forum = await interaction.client.fetch_channel(target_forum.id)
+        except Exception as e:
+            await interaction.followup.send(f"❌ Impossible de créer le tag **{display_name}** : {e}", ephemeral=True)
+            return
+
+    # Dernier refetch pour la liste complète et synchronisée
+    target_forum = await interaction.client.fetch_channel(target_forum.id)
+    existing_tags = {tag.name.lower(): tag for tag in target_forum.available_tags}
+
+    # --- ÉTAPE 5 : Transfert des threads (avec retry automatique - option 3) ---
+    transfer_log = []
+    moved_threads = []
+    all_success = True
+
+    for thread in all_threads:
+        try:
+            messages = [msg async for msg in thread.history(limit=1, oldest_first=True)]
+            if not messages:
+                first_content = "*Aucun message trouvé*"
+                author_name = "Inconnu"
+            else:
+                first = messages[0]
+                first_content = first.content or "*Message vide*"
+                author_name = first.author.display_name
+
+            title = thread.name
+            thread_tags_lower = [tag.name.lower() for tag in thread.applied_tags]
+            applied_tags = [existing_tags[t] for t in thread_tags_lower if t in existing_tags]
+
+            # --- Retry de création du thread jusqu'à 3 fois ---
+            success = False
+            for attempt in range(3):
+                try:
+                    await target_forum.create_thread(
+                        name=title,
+                        content=f"**{author_name}:** {first_content}",
+                        applied_tags=applied_tags
+                    )
+                    success = True
+                    break
+                except discord.HTTPException as e:
+                    if "Unknown Tag" in str(e) and attempt < 2:
+                        print(f"⚠️ Tentative {attempt+1}/3 échouée pour {title} (tags non propagés). Nouvel essai...")
+                        await asyncio.sleep(1.5)
+                        target_forum = await interaction.client.fetch_channel(target_forum.id)
+                        existing_tags = {tag.name.lower(): tag for tag in target_forum.available_tags}
+                        applied_tags = [existing_tags[t] for t in thread_tags_lower if t in existing_tags]
+                        continue
+                    else:
+                        raise
+
+            if not success:
+                raise RuntimeError("Impossible de créer le thread après 3 tentatives")
+
+            moved_threads.append(thread)
+            transfer_log.append(
+                f"✅ **{title}**\nAuteur: {author_name}\nTags: {', '.join([t.name for t in applied_tags])}\nMessage: {first_content}\n"
+            )
+
+        except Exception as e:
+            all_success = False
+            transfer_log.append(f"❌ **{thread.name}** — Erreur: {e}")
+            continue
+
+    # --- ÉTAPE 6 : Affichage du résumé ---
+    transfer_summary = "\n".join(transfer_log)
+    for i in range(0, len(transfer_summary), 1990):
+        await interaction.followup.send(f"```{transfer_summary[i:i+1990]}```")
+
+    # --- ÉTAPE 7 : Suppression des threads d'origine si tout est réussi ---
+    if all_success and moved_threads:
+        await interaction.followup.send("✅ Tous les threads ont été transférés avec succès. Suppression en cours…", ephemeral=True)
+        for thread in moved_threads:
+            try:
+                await thread.delete()
+            except Exception as e:
+                print(f"Erreur suppression {thread.name}:", e)
+    else:
+        await interaction.followup.send("⚠️ Certains threads ont échoué. Aucun thread source n’a été supprimé.", ephemeral=True)
+
 # ----------------- LISTE DES SYSTÈMES Actifs-----------------
 @tree.command(
     name="liste_sys",
@@ -1226,7 +1401,8 @@ async def h(interaction: discord.Interaction):
         name="🏅 Tableau d'Honneur",
         value=(
             "🟢 **`/honneur`** — Tire au hasard un post d'honneur parmi les mots-clés donnés.\n"
-            "🟢 **`/maj_honneurs`** — Met à jour la liste des mots-clés d’honneur à partir des tags des forums."
+            "🟢 **`/maj_honneurs`** — Met à jour la liste des mots-clés d’honneur à partir des tags des forums.\n"
+            "🟣 **`/transfer_threads`** — Transférer tous les threads d'un ou plusieurs tags vers un nouveau forum."
         ),
         inline=False
     )
