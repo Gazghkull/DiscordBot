@@ -84,9 +84,7 @@ PLANET_VALUE_ICONS = {
     2: "⭐⭐"
 }
 
-# ----------------- HONNEUR FORUM IDS -----------------
-#FORUM_IDS = [1424007352348049598, 1424806344417873960] #Dev
-#FORUM_IDS = [1420741205880471562, 1424671536077340682]
+# ----------------- HONNEUR -----------------
 HonneurKeyWords = []
 
 ACTIVE_SYSTEMS = {}  # sera chargé depuis le JSON
@@ -128,8 +126,6 @@ def save_data():
         print(f"❌ Erreur lors de la sauvegarde des données : {e}")
 
 # ----------------- CONFIG -----------------
-#GUILD_ID = 1384163146050048092 # Dev
-#GUILD_ID = 1420665554225729588
 # Lecture des IDs depuis .env
 GUILD_ID = int(os.getenv("GUILD_ID"))
 FORUM_IDS = [int(fid.strip()) for fid in os.getenv("FORUM_IDS", "").split(",") if fid.strip()]
@@ -205,10 +201,31 @@ async def autocomplete_phase(interaction: discord.Interaction, current: str):
         for p in phases if current in p
     ][:25]
 
+# --- Autocompletion pour activer les systèmes ---
+async def completer_activer(interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+    secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
+    choices = []
+    for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
+        for sys, actif in systemes.items():
+            if not actif and current.lower() in sys.lower():
+                choices.append(app_commands.Choice(name=f"{sys} ({ss})", value=sys))
+    return choices[:25]  # Discord limite à 25 choix max
+
+# --- Autocompletion pour désactiver les systèmes ---
+async def completer_desactiver(interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+    secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
+    choices = []
+    for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
+        for sys, actif in systemes.items():
+            if actif and current.lower() in sys.lower():
+                choices.append(app_commands.Choice(name=f"{sys} ({ss})", value=sys))
+    return choices[:25]
+
 # ---------------------------------------------
 # ---------------------------------------------
 # ----------------- COMMANDES -----------------
-# ----------------- COMMANDE /ajout -----------------
+
+# ----------------- COMMANDE /ajout -----------
 @tree.command(name="ajout", description="Ajouter une partie/bataille", guild=guild)
 @app_commands.describe(
     planete="Nom de la planète",
@@ -957,8 +974,8 @@ async def honneur(
     mot3: Optional[str] = None,
     mot4: Optional[str] = None,
     mot5: Optional[str] = None,
-    mot6: Optional[str] = None
-):
+    mot6: Optional[str] = None):
+    
     await interaction.response.defer(thinking=True, ephemeral=False)
 
     # --- Préparer la liste des mots-clés ---
@@ -1053,25 +1070,145 @@ async def maj_honneurs(interaction: discord.Interaction):
     )
 
 
-# ----------------- LISTE DES SYSTÈMES ET PLANÈTES -----------------
-@tree.command(name="liste_sys", description="Afficher la liste des systèmes actifs et leurs planètes", guild=guild)
-async def liste_sys(interaction: discord.Interaction):
-    desc = ""
-    # Parcours hiérarchique : secteur -> sous-secteur -> système -> planètes
-    for secteur, sous_secteurs in SECTORS.items():
-        for sous_secteur, systemes in sous_secteurs.items():
-            for systeme, planets in systemes.items():
-                # Vérifie si le système est actif
-                if not ACTIVE_SYSTEMS.get(secteur, {}).get(sous_secteur, {}).get(systeme, True):
-                    continue
-                desc += f"**{systeme} ({sous_secteur}, {secteur})** : {', '.join(planets.keys())}\n"
+# ----------------- LISTE DES SYSTÈMES Actifs-----------------
+@tree.command(
+    name="liste_sys",
+    description="Liste les systèmes actifs d'un secteur",
+    guild=guild
+)
+@app_commands.describe(
+    affichage="Choisir l'affichage des systèmes"
+)
+@app_commands.choices(
+    affichage=[
+        app_commands.Choice(name="ActifSeul", value=0),
+        app_commands.Choice(name="Actifs/Inactifs", value=1)
+    ]
+)
+async def liste_sys(
+    interaction: discord.Interaction, 
+    affichage: Optional[app_commands.Choice[int]] = None):
 
-    if not desc:
-        await interaction.response.send_message("❌ Aucun système actif pour cette phase.")
+    # Par défaut, ActifSeul
+    inactifs = bool(affichage.value) if affichage else False
+
+    # Secteur actif
+    secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
+
+    # Filtrer les sous-secteurs
+    sous_secteurs_actifs = {
+        ss: {s: a for s, a in systemes.items() if a or inactifs}
+        for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items()
+    }
+    # Supprimer les sous-secteurs vides
+    sous_secteurs_actifs = {ss: sys for ss, sys in sous_secteurs_actifs.items() if sys}
+
+    # Vérification d'erreur
+    if len(sous_secteurs_actifs) > 1:
+        message = f"⚠️ **Erreur : plusieurs sous-secteurs détectés dans le secteur {secteur_nom}.**\n"
+        message += "Voici la liste complète des systèmes pour diagnostic :\n\n"
+        for ss, systemes in sous_secteurs_actifs.items():
+            message += f"📂 Sous-secteur : {ss}\n"
+            for systeme, actif in systemes.items():
+                etat = "🟢 actif" if actif else "🔴 inactif"
+                message += f" 🪐 {systeme} ({etat})\n"
+            message += "\n"
+        await interaction.response.send_message(message)
         return
 
-    await interaction.response.send_message(f"📜 Systèmes actifs et planètes :\n{desc}")
+    # Cas normal : un seul sous-secteur
+    sous_secteur = list(sous_secteurs_actifs.keys())[0]
+    systemes = sous_secteurs_actifs[sous_secteur]
 
+    message = f"🌌 **Secteur : {secteur_nom}**\n\n"
+    message += f"📂 **Sous-secteur : {sous_secteur}**\n"
+    for systeme, actif in systemes.items():
+        etat = "🟢 actif" if actif else "🔴 inactif"
+        message += f" 🪐 {systeme} ({etat})\n"
+
+    await interaction.response.send_message(message)
+
+# ----------------- Activer/Désactiver Systèmes -----------------
+@tree.command(
+    name="toggle_sys",
+    description="Activer ou désactiver un système",
+    guild=guild
+)
+@app_commands.describe(
+    systeme="Nom du système à activer/désactiver",
+    etat="True pour activer, False pour désactiver (laisser vide pour inverser)"
+)
+async def toggle_sys(
+    interaction: discord.Interaction,
+    systeme: str,
+    etat: Optional[bool] = None):
+
+    # Secteur actif
+    secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
+
+    # Rechercher le système dans les sous-secteurs
+    systeme_trouve = False
+    for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
+        if systeme in systemes:
+            systeme_trouve = True
+            # Si l'état n'est pas donné, on fait un toggle
+            if etat is None:
+                ACTIVE_SYSTEMS[secteur_nom][ss][systeme] = not systemes[systeme]
+            else:
+                ACTIVE_SYSTEMS[secteur_nom][ss][systeme] = etat
+
+            etat_final = ACTIVE_SYSTEMS[secteur_nom][ss][systeme]
+            message = f"🪐 **{systeme}** a été {'activé 🟢' if etat_final else 'désactivé 🔴'} dans le sous-secteur **{ss}**."
+            await interaction.response.send_message(message)
+            return
+
+    if not systeme_trouve:
+        await interaction.response.send_message(f"❌ Le système **{systeme}** n'a pas été trouvé dans le secteur {secteur_nom}.")
+
+# --- Commande activer ---
+@tree.command(
+    name="activer_sys",
+    description="Activer un système",
+    guild=guild
+)
+@app_commands.describe(
+    systeme="Nom du système à activer"
+)
+@app_commands.autocomplete(systeme=completer_activer)
+async def activer_sys(interaction: discord.Interaction, systeme: str):
+    secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
+    for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
+        if systeme in systemes:
+            if systemes[systeme]:
+                await interaction.response.send_message(f"🟢 Le système **{systeme}** est déjà activé.")
+            else:
+                systemes[systeme] = True
+                await interaction.response.send_message(f"🟢 Le système **{systeme}** a été activé dans le sous-secteur **{ss}**.")
+            return
+    await interaction.response.send_message(f"❌ Le système **{systeme}** n'a pas été trouvé dans le secteur {secteur_nom}.")
+
+# --- Commande désactiver ---
+@tree.command(
+    name="desactiver_sys",
+    description="Désactiver un système",
+    guild=guild
+)
+@app_commands.describe(
+    systeme="Nom du système à désactiver"
+)
+@app_commands.autocomplete(systeme=completer_desactiver)
+async def desactiver_sys(interaction: discord.Interaction, systeme: str):
+    secteur_nom = list(ACTIVE_SYSTEMS.keys())[0]
+    for ss, systemes in ACTIVE_SYSTEMS[secteur_nom].items():
+        if systeme in systemes:
+            if not systemes[systeme]:
+                await interaction.response.send_message(f"🔴 Le système **{systeme}** est déjà désactivé.")
+            else:
+                systemes[systeme] = False
+                await interaction.response.send_message(f"🔴 Le système **{systeme}** a été désactivé dans le sous-secteur **{ss}**.")
+            return
+    await interaction.response.send_message(f"❌ Le système **{systeme}** n'a pas été trouvé dans le secteur {secteur_nom}.")
+    
 # ----------------- HELP -----------------
 @tree.command(name="h",
               description="Afficher la liste complète des commandes disponibles",
